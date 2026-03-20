@@ -1,4 +1,4 @@
-# Clash for Claw
+﻿# Clash for Claw
 
 <div align="center">
   <img src="Assets/ClashForClaw-icon-preview.png" alt="Clash for Claw icon" width="88" />
@@ -19,7 +19,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/readme-overview.png" alt="Clash for Claw overview" width="760" />
+  <img src="docs/readme-hero.png" alt="Clash for Claw overview" width="920" />
 </p>
 
 ## 项目缘起
