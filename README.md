@@ -40,8 +40,8 @@
 
 ### 方式一：下载发布版本
 
-1. 打开 [Releases](https://github.com/KeyanHu-git/Clash-for-Claw/releases) 下载最新版本。
-2. 准备可运行的 `OpenClaw-Adapter.exe`。
+1. 打开 [Releases](https://github.com/KeyanHu-git/Clash-for-Claw/releases) 下载最新的 `setup.exe` 安装包。
+2. 双击安装，程序会被安装到当前用户目录并自动创建开始菜单入口。
 3. 启动 `Clash for Claw`，填写网关地址与令牌。
 4. 在“订阅”页添加订阅，或切换到本地端口模式。
 5. 验证联网正常后，再按需开启开机自启、静默启动或服务模式。
@@ -62,7 +62,7 @@ dotnet build OpenClawAdapter.csproj -p:Platform=x64
 
 ## 发布
 
-- 当前公开版本：[v0.1.0](https://github.com/KeyanHu-git/Clash-for-Claw/releases/tag/v0.1.0)
+- 当前公开版本：[v0.1.1](https://github.com/KeyanHu-git/Clash-for-Claw/releases/tag/v0.1.1)
 
 ## 协议
 
