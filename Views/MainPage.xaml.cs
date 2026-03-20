@@ -35,7 +35,7 @@ public partial class MainPage : Page
         }
 
         isLoaded = true;
-        if (!await EnsureBackendReadyAsync("本地服务未启动。"))
+        if (!await EnsureBackendReadyAsync("后台未启动。"))
         {
             return;
         }
@@ -60,7 +60,7 @@ public partial class MainPage : Page
 
     private async void OnReloadClicked(object sender, RoutedEventArgs e)
     {
-        if (!await EnsureBackendReadyAsync("本地服务未启动。"))
+        if (!await EnsureBackendReadyAsync("后台未启动。"))
         {
             return;
         }
@@ -82,7 +82,7 @@ public partial class MainPage : Page
 
     private async void OnProbeClicked(object sender, RoutedEventArgs e)
     {
-        if (!await EnsureBackendReadyAsync("本地服务未启动。"))
+        if (!await EnsureBackendReadyAsync("后台未启动。"))
         {
             return;
         }
@@ -130,7 +130,7 @@ public partial class MainPage : Page
         isModeSwitching = true;
         try
         {
-            if (!await EnsureBackendReadyAsync("本地服务未启动。"))
+            if (!await EnsureBackendReadyAsync("后台未启动。"))
             {
                 ViewModel.IsSubscriptionMode = false;
                 return;
@@ -188,7 +188,7 @@ public partial class MainPage : Page
 
         try
         {
-            if (!await EnsureBackendReadyAsync("本地服务未启动。"))
+            if (!await EnsureBackendReadyAsync("后台未启动。"))
             {
                 ViewModel.IsSubscriptionMode = true;
                 return;
@@ -234,7 +234,7 @@ public partial class MainPage : Page
             return;
         }
 
-        if (!await EnsureBackendReadyAsync("本地服务未启动。"))
+        if (!await EnsureBackendReadyAsync("后台未启动。"))
         {
             isUpdatingSystemProxySwitch = true;
             toggle.IsOn = false;

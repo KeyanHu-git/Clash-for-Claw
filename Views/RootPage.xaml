@@ -77,10 +77,9 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ListViewItem">
                         <Grid>
-                            <Border x:Name="HoverLayer" Margin="3,2" CornerRadius="13" Background="#120C1524" BorderBrush="{ThemeResource NavPaneLineBrush}" BorderThickness="1" Opacity="0" />
-                            <Border x:Name="SelectGlow" Margin="3,2" CornerRadius="13" Background="{ThemeResource NavPaneGlowBrush}" Opacity="0" />
+                            <Border x:Name="HoverLayer" Margin="3,2" CornerRadius="13" Background="#140C1524" BorderBrush="{ThemeResource NavPaneLineBrush}" BorderThickness="1" Opacity="0" />
+                            <Border x:Name="SelectGlow" Margin="1,0" CornerRadius="15" Background="{ThemeResource NavPaneGlowBrush}" Opacity="0" />
                             <Border x:Name="SelectLayer" Margin="3,2" CornerRadius="13" Background="{ThemeResource NavSelectionFillBrush}" BorderBrush="{ThemeResource NavSelectionBorderBrush}" BorderThickness="1" Opacity="0" />
-                            <Border x:Name="SelectAccent" Margin="7,8,0,8" Width="3" CornerRadius="2" Background="{ThemeResource AccentBlueBrush}" HorizontalAlignment="Left" Opacity="0" />
                             <Border x:Name="PressedLayer" Margin="3,2" CornerRadius="13" Background="#2810192D" Opacity="0" />
                             <Border x:Name="ItemBorder" Margin="3,2" CornerRadius="13" Background="Transparent" BorderThickness="0" BorderBrush="Transparent" Padding="0,4" RenderTransformOrigin="0.5,0.5">
                                 <Border.RenderTransform>
@@ -124,7 +123,6 @@
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="SelectLayer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.08" />
                                         <DoubleAnimation Storyboard.TargetName="SelectGlow" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.08" />
-                                        <DoubleAnimation Storyboard.TargetName="SelectAccent" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.08" />
                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Foreground">
                                             <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource TextMutedBrush}" />
                                         </ObjectAnimationUsingKeyFrames>
@@ -133,8 +131,7 @@
                                 <VisualState x:Name="Selected">
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="SelectLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.14" />
-                                        <DoubleAnimation Storyboard.TargetName="SelectGlow" Storyboard.TargetProperty="Opacity" To="0.82" Duration="0:0:0.16" />
-                                        <DoubleAnimation Storyboard.TargetName="SelectAccent" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectGlow" Storyboard.TargetProperty="Opacity" To="0.6" Duration="0:0:0.16" />
                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Foreground">
                                             <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentBlueBrush}" />
                                         </ObjectAnimationUsingKeyFrames>
@@ -215,19 +212,18 @@
                     BorderThickness="0"
                     CornerRadius="12"
                     Padding="10,7">
-                    <Grid ColumnSpacing="16">
+                    <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Spacing="2" MaxWidth="440">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Border Background="{ThemeResource SurfaceAltBrush}" CornerRadius="6" Height="20" Width="20" VerticalAlignment="Center">
-                                    <Image Source="ms-appx:///Assets/ClashForClaw-icon-preview.png" Stretch="Uniform" Margin="2" />
+                                <Border Background="{ThemeResource SurfaceAltBrush}" CornerRadius="7" Height="24" Width="24" VerticalAlignment="Center">
+                                    <Image Source="ms-appx:///Assets/ClashForClaw-icon-preview.png" Stretch="Uniform" Margin="1" />
                                 </Border>
-                                <TextBlock Style="{StaticResource BrandText}" FontSize="19" Text="Clash for Claw" />
+                                <TextBlock Style="{StaticResource BrandText}" FontSize="20" Text="Clash for Claw" />
                             </StackPanel>
                             <TextBlock
                                 Style="{StaticResource MutedText}"
@@ -240,50 +236,59 @@
                                 TextTrimming="CharacterEllipsis" />
                         </StackPanel>
 
-                        <StackPanel
-                            Grid.Column="1"
-                            Orientation="Horizontal"
-                            Spacing="8"
-                            VerticalAlignment="Center">
-                            <Border Style="{StaticResource TopStatusChip}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <Ellipse Width="6" Height="6" Fill="{Binding ConnectionStatusBrush}" VerticalAlignment="Center" />
-                                    <TextBlock
-                                        Foreground="{Binding ConnectionStatusBrush}"
-                                        FontWeight="SemiBold"
-                                        FontSize="13"
-                                        Text="{Binding ConnectionState}" />
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource TopStatusChip}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <Ellipse Width="6" Height="6" Fill="{Binding ModeStatusBrush}" VerticalAlignment="Center" />
-                                    <TextBlock
-                                        Foreground="{Binding ModeStatusBrush}"
-                                        FontWeight="SemiBold"
-                                        FontSize="13"
-                                        Text="{Binding ModeSummary}" />
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
+                        <Border Grid.Column="1" Background="{ThemeResource SurfaceAltBrush}" CornerRadius="11" Padding="10,7" VerticalAlignment="Center">
+                            <Grid RowSpacing="6">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
 
-                        <Border Grid.Column="2" Style="{StaticResource TopStatusChip}">
-                            <StackPanel Spacing="3" VerticalAlignment="Center">
-                                <TextBlock
-                                    Style="{StaticResource MutedText}"
-                                    FontSize="12"
-                                    Text="{Binding TrafficUpdatedAtText}" />
-                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Border Style="{StaticResource TopStatusChip}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Ellipse Width="6" Height="6" Fill="{Binding ConnectionStatusBrush}" VerticalAlignment="Center" />
+                                            <TextBlock
+                                                Foreground="{Binding ConnectionStatusBrush}"
+                                                FontWeight="SemiBold"
+                                                FontSize="13"
+                                                Text="{Binding ConnectionState}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Style="{StaticResource TopStatusChip}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Ellipse Width="6" Height="6" Fill="{Binding ModeStatusBrush}" VerticalAlignment="Center" />
+                                            <TextBlock
+                                                Foreground="{Binding ModeStatusBrush}"
+                                                FontWeight="SemiBold"
+                                                FontSize="13"
+                                                Text="{Binding ModeSummary}" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+
+                                <Grid Grid.Row="1" ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
                                     <StackPanel Orientation="Horizontal" Spacing="4">
                                         <TextBlock Text="↑" Foreground="{ThemeResource AccentBlueBrush}" FontSize="12" />
                                         <TextBlock Text="{Binding TrafficUpRateText}" FontWeight="SemiBold" FontSize="12" />
                                     </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
                                         <TextBlock Text="↓" Foreground="{ThemeResource AccentBrush}" FontSize="12" />
                                         <TextBlock Text="{Binding TrafficDownRateText}" FontWeight="SemiBold" FontSize="12" />
                                     </StackPanel>
-                                </StackPanel>
-                            </StackPanel>
+                                    <TextBlock
+                                        Grid.Column="2"
+                                        Style="{StaticResource MutedText}"
+                                        FontSize="12"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding TrafficUpdatedAtText}" />
+                                </Grid>
+                            </Grid>
                         </Border>
                     </Grid>
                 </Border>
@@ -295,12 +300,13 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0" Background="{ThemeResource NavPaneBackgroundBrush}" BorderBrush="{ThemeResource NavPaneBorderBrush}" BorderThickness="1" CornerRadius="12">
+                <Border Grid.Column="0" Background="{ThemeResource NavPaneBackgroundBrush}" BorderThickness="0" CornerRadius="12">
                     <Grid>
                         <ListView
                             x:Name="NavList"
                             SelectionChanged="OnNavSelectionChanged"
                             SelectedIndex="0"
+                            SelectionMode="Single"
                             HorizontalContentAlignment="Stretch"
                             Padding="0,10,0,8"
                             ItemContainerStyle="{StaticResource NavItemStyle}">
@@ -365,9 +371,6 @@
                                 </Grid>
                             </ListViewItem>
                         </ListView>
-
-                        <Border VerticalAlignment="Top" Height="1" Background="{ThemeResource NavPaneTopLineBrush}" Opacity="0.7" IsHitTestVisible="False" />
-                        <Border VerticalAlignment="Bottom" Height="1" Background="{ThemeResource NavPaneBottomLineBrush}" Opacity="0.6" IsHitTestVisible="False" />
                     </Grid>
                 </Border>
 

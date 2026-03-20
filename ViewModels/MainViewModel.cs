@@ -335,7 +335,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ? "单机回环 · 完全静默后台"
         : "单机回环 · 桌面后台";
 
-    public string ConnectivitySummary => $"连通探测：本地 {LocalStatusText} · 网关 {GatewayStatusText} · 互联网 {InternetStatusText}";
+    public string ConnectivitySummary => $"本地 {LocalStatusText} · 网关 {GatewayStatusText} · 互联网 {InternetStatusText}";
 
     public string TrafficUpRateText
     {

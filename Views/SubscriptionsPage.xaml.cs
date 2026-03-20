@@ -814,7 +814,7 @@ public partial class SubscriptionsPage : Page, INotifyPropertyChanged
             return true;
         }
 
-        SetStatus("本地服务未启动。", true);
+        SetStatus("后台未启动。", true);
         return false;
     }
 

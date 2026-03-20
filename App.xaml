@@ -31,11 +31,11 @@
                         <GradientStop Color="#0822D3EE" Offset="1" />
                     </LinearGradientBrush>
                     <LinearGradientBrush x:Key="NavPaneGlowBrush" StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#8822D3EE" Offset="0" />
+                        <GradientStop Color="#4422D3EE" Offset="0" />
                         <GradientStop Color="#0022D3EE" Offset="1" />
                     </LinearGradientBrush>
-                    <SolidColorBrush x:Key="NavSelectionFillBrush" Color="#3AF6FCFF" />
-                    <SolidColorBrush x:Key="NavSelectionBorderBrush" Color="#C022D3EE" />
+                    <SolidColorBrush x:Key="NavSelectionFillBrush" Color="#54E8FBFF" />
+                    <SolidColorBrush x:Key="NavSelectionBorderBrush" Color="#9222D3EE" />
                     <SolidColorBrush x:Key="NavPaneLineBrush" Color="#B322D3EE" />
                     <SolidColorBrush x:Key="NavPaneTopLineBrush" Color="#6622D3EE" />
                     <SolidColorBrush x:Key="NavPaneBottomLineBrush" Color="#4A2DD4BF" />
@@ -105,11 +105,11 @@
                         <GradientStop Color="#0822D3EE" Offset="1" />
                     </LinearGradientBrush>
                     <LinearGradientBrush x:Key="NavPaneGlowBrush" StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#CC22D3EE" Offset="0" />
+                        <GradientStop Color="#6A22D3EE" Offset="0" />
                         <GradientStop Color="#0022D3EE" Offset="1" />
                     </LinearGradientBrush>
-                    <SolidColorBrush x:Key="NavSelectionFillBrush" Color="#4616263D" />
-                    <SolidColorBrush x:Key="NavSelectionBorderBrush" Color="#EE22D3EE" />
+                    <SolidColorBrush x:Key="NavSelectionFillBrush" Color="#6A16263D" />
+                    <SolidColorBrush x:Key="NavSelectionBorderBrush" Color="#AA22D3EE" />
                     <SolidColorBrush x:Key="NavPaneLineBrush" Color="#E022D3EE" />
                     <SolidColorBrush x:Key="NavPaneTopLineBrush" Color="#8022D3EE" />
                     <SolidColorBrush x:Key="NavPaneBottomLineBrush" Color="#5A2DD4BF" />
