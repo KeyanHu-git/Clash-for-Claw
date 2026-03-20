@@ -3,15 +3,18 @@
 <div align="center">
   <img src="Assets/ClashForClaw-icon-preview.png" alt="Clash for Claw icon" width="88" />
 
-  <p><strong>为 OpenClaw / OpenClaw Adapter 准备的一套更轻、更聚焦、更中文化的本地代理桌面前端。</strong></p>
+  <p><strong>面向 OpenClaw / Claw 链路的本地桌面控制端。</strong></p>
+  <p><strong>更聚焦、更紧凑、更安静，只处理真正和本机代理入口有关的事情。</strong></p>
 
   <p>
     <a href="https://github.com/KeyanHu-git/Clash-for-Claw/stargazers">
-      <img src="https://img.shields.io/github/stars/KeyanHu-git/Clash-for-Claw?style=for-the-badge&logo=github&label=Stars" alt="GitHub stars" />
+      <img src="https://img.shields.io/github/stars/KeyanHu-git/Clash-for-Claw?style=for-the-badge&label=Stars" alt="GitHub stars" />
+    </a>
+    <a href="https://github.com/KeyanHu-git/Clash-for-Claw/releases">
+      <img src="https://img.shields.io/github/v/release/KeyanHu-git/Clash-for-Claw?style=for-the-badge&label=Release" alt="GitHub release" />
     </a>
     <img src="https://visitor-badge.laobi.icu/badge?page_id=KeyanHu-git.Clash-for-Claw&left_text=Visitors&left_color=0f172a&right_color=14b8a6&style=for-the-badge" alt="Visitors" />
-    <img src="https://img.shields.io/github/last-commit/KeyanHu-git/Clash-for-Claw?style=for-the-badge&label=Updated" alt="Last commit" />
-    <img src="https://img.shields.io/badge/WinUI%203-.NET%2010-0ea5a5?style=for-the-badge" alt="WinUI 3 .NET 10" />
+    <img src="https://img.shields.io/github/license/KeyanHu-git/Clash-for-Claw?style=for-the-badge&label=License" alt="License" />
   </p>
 </div>
 
@@ -19,92 +22,108 @@
   <img src="docs/readme-overview.png" alt="Clash for Claw overview" width="760" />
 </p>
 
-## 为什么要做这个
+## 项目定位
 
-OpenClaw 这条链路需要的，其实不是一个“面向所有代理玩法的超级控制台”，而是一个：
+`Clash for Claw` 不是一个泛代理配置面板，而是一套专门围绕 `OpenClaw / Claw + Adapter` 链路设计的本地桌面控制端。
+
+它更强调下面几件事：
 
 - 只关心本机回环链路
-- 对 OpenClaw / Adapter 足够友好
-- 中文清晰
-- 默认不打扰用户
-- 能稳定常驻，也能在需要时完全静默
+- 只暴露真正有用的状态、切换与配置
+- 尽量少按钮、少打扰、少层级
+- 前台负责可视化，后台负责稳定驻留
+- 保持中文友好与日常可维护性
 
-的桌面产品。
+换句话说，它的目标不是“什么都做”，而是把和 Claw 最相关的这一条链路，做得足够顺手、足够稳定、足够像一个产品。
 
-`Clash for Claw` 的目标不是替代所有 Clash GUI，而是把和 OpenClaw 最相关、最常用、最该顺手的那一小部分体验，做得更轻、更稳、更像产品。
+## 亮点
 
-## 它和 CFW 有什么不一样
+### 1. 为 Claw 使用场景而设计
 
-> 不是要“打败 CFW”，而是走另一条更聚焦的产品路线。
+这个项目从一开始就不是通用桌面代理壳，而是直接围绕下面这条工作流来组织：
 
-| 维度 | Clash for Windows | Clash for Claw |
-| --- | --- | --- |
-| 定位 | 通用型 Clash 图形客户端 | 面向 OpenClaw / OpenClaw Adapter 的专用桌面前端 |
-| 默认思路 | 功能全面、适合泛代理用户 | 聚焦主流程，尽量少按钮、少打扰 |
-| 代理策略 | 常见场景偏系统代理工作流 | 默认只走本地回环链路，系统代理默认关闭，可手动开启 |
-| 页面结构 | 功能多、配置深 | 概览 / 订阅 / 设置 / 日志与高级 / 说明 |
-| 订阅体验 | 通用订阅管理 | 做 CFW 风格的订阅条，但围绕 Adapter 链路状态与切换来设计 |
-| 后台驻留 | 更偏桌面客户端逻辑 | 桌面后台、托盘、服务模式、计划任务降级都考虑进来 |
-| 产品目标 | 全能 | 小巧、精致、够用、顺手 |
+- OpenClaw / Claw 需要一个明确的本地代理入口
+- Adapter 需要一个清楚、稳定、可观察的前台
+- 用户需要尽量少的概念切换
 
-一句话：
+所以它把重点放在：
 
-`Clash for Claw` 更像一个“为 OpenClaw 量身裁剪过的桌面控制面板”，而不是一个大而全的代理工具箱。
+- 订阅与本地端口两种核心模式
+- 回环、网关、互联网三段状态观察
+- 后台驻留与无感运行
+- 最少但够用的可视化配置
 
-## 当前已经能做什么
+### 2. 默认不打扰用户
 
-### 已实现
+项目遵循的是“配置在前台，运行在后台”的思路：
 
-- WinUI 3 桌面 UI，中文界面
-- 侧栏式结构：概览 / 订阅 / 设置 / 日志与高级 / 说明
-- 本地回环模式工作流
+- 可使用桌面后台模式
+- 可最小化到托盘
+- 可开机自启
+- 可静默启动
+- 可切换到服务模式
+- 服务失败时可降级到计划任务
+
+### 3. 只把关键状态讲清楚
+
+界面不是做成“大而全的控制台”，而是集中在几个真正重要的信息上：
+
+- 当前模式
+- 当前连通状态
+- 网关是否可达
+- 互联网是否正常
+- 订阅是否可用
+- 当前流量速率与更新时间
+
+### 4. 更适合长期放在自己电脑上用
+
+它的目标不是一次性演示，而是作为本机长期存在的一部分：
+
+- 设置持久化
+- 敏感值不回显
+- 本地日志落盘
+- 后端可按需自动拉起
+- UI 和后台职责分离
+
+## 当前已实现能力
+
+- WinUI 3 中文桌面界面
+- 概览 / 订阅 / 设置 / 日志与高级 / 说明 五个主页面
 - 网关地址与令牌配置
-- URL 中的 token 自动解析，但不回显
+- URL 中 token 自动解析但不回显
 - 订阅模式与本地端口模式切换
 - 订阅缺失时自动回退本地端口
 - 本地服务、网关、互联网状态探测
-- 订阅列表页、单条刷新、全量刷新、导入、本地删除等基础交互
-- 订阅页支持 CFW 风格条形卡片基础样式
-- 上下行速率与更新时间展示
+- 订阅列表、单条刷新、全量刷新、导入、本地删除等基础交互
+- 上下行速率与更新时间显示
 - 设置持久化到本机配置文件
-- 托盘常驻、开机自启、静默启动、关闭最小化到托盘
+- 托盘、开机自启、静默启动、关闭最小化到托盘
 - 调起 `OpenClaw-Adapter.exe --daemon`
 - 服务模式启停与计划任务降级逻辑
 - 程序化动态背景与数学水母背景
 
-### 正在继续打磨
-
-- 服务模式长期稳定性
-- 订阅自动切换与更多边界场景
-- 发布与分发体验
-- 更完整的图标、安装包与更新体验
-
 ## 适合谁
 
-- 正在使用 OpenClaw，并且想把代理入口收拢到一个本地桌面工具里的人
-- 不喜欢“设置很多、页面很多、看着很累”的代理类客户端的人
-- 希望代理 UI 只负责配置和观察，后台自己安静跑的人
+- 正在使用 OpenClaw / Claw，希望把代理入口收拢到本地桌面端的人
+- 希望代理控制界面尽量简单、稳定、长期可用的人
+- 不想在日常使用里看到大量无关配置项的人
 
-## 快速开始
+## 如何用到自己的电脑上
 
-### 运行前你需要知道
+### 你需要准备什么
 
-这个仓库当前是 **WinUI 前端**。
+当前仓库主要提供 **WinUI 前端**。
 
-真正负责本地 API、订阅处理、Mihomo 子进程和后台模式的，是配套的：
+真正负责本地 API、订阅处理、Mihomo 子进程、后台模式的，是配套的：
 
 - `OpenClaw-Adapter.exe`
 
 也就是说：
 
-- 这个仓库负责桌面界面
+- 本仓库负责桌面界面
 - `OpenClaw-Adapter.exe` 负责后台能力
 
-默认情况下，前端会优先在应用目录旁边寻找 `OpenClaw-Adapter.exe`。
-
 ### 方式一：从源码运行
-
-当前最稳妥的使用方式，是直接本地编译运行。
 
 #### 1. 准备环境
 
@@ -139,56 +158,67 @@ dotnet build OpenClawAdapter.csproj -p:Platform=x64
 .\bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64\OpenClawAdapter.exe
 ```
 
-### 首次使用建议
+### 首次配置建议
 
-1. 在“概览”页确认后台已经拉起
-2. 在“概览”页填写网关地址与令牌
-3. 去“订阅”页添加你的订阅 URL
-4. 先用订阅模式跑通，再决定是否启用本地端口模式
-5. 如果你只想后台安静运行，再去“设置”页尝试服务模式
+1. 在“概览”页确认后台已经启动
+2. 填写网关地址与令牌
+3. 去“订阅”页添加订阅 URL
+4. 先把订阅模式跑通
+5. 确认稳定后再启用开机自启、静默启动或服务模式
 
-## 推荐使用方式
-
-对大多数人来说，推荐顺序是：
-
-1. 先用桌面后台模式跑通
-2. 再打开开机自启 / 静默启动
-3. 最后再尝试服务模式
-
-这样排错最容易，体验也最稳。
-
-## 本地文件与数据位置
+## 本地文件位置
 
 - 界面设置：`%AppData%\OpenClawAdapter\settings.json`
 - 服务模式数据目录：`%ProgramData%\OpenClawAdapter`
 - 服务模式日志：`%ProgramData%\OpenClawAdapter\logs\adapter.log`
 
+## 首个公开版本
+
+当前仓库已开始使用独立版本号发布。
+
+首个公开预览版本为：
+
+- `v0.1.0`
+
+你可以在这里查看后续发布：
+
+- https://github.com/KeyanHu-git/Clash-for-Claw/releases
+
+## 开源协议
+
+本项目当前采用 **MIT License**。
+
+这意味着你可以：
+
+- 个人使用
+- 商业使用
+- 修改与再分发
+
+你需要保留：
+
+- 原始版权声明
+- 许可证文本
+
+如果后续你希望改成更严格或更明确的协议，我可以继续替你调整。
+
 ## 安全提醒
 
 - 不要把真实订阅 URL、真实 token、真实网关令牌提交到仓库
 - README、截图、示例配置只应使用占位符
-- 即使界面支持从 URL 自动提取 token，也不意味着这些 URL 适合进入 Git 历史
+- 即使界面支持从 URL 自动提取 token，也不代表这些 URL 适合进入 Git 历史
 
-## 为什么值得点一个 Star
+## 如果这个项目对你有帮助
 
-如果你也在找这样一种东西：
+欢迎给仓库点一个 Star：
 
-- 不想被一大堆设置淹没
-- 想让 OpenClaw 的代理入口更清楚
-- 想要一个更轻、更紧凑、更像产品的本地桌面端
+- https://github.com/KeyanHu-git/Clash-for-Claw
 
-那这个项目就是为你做的。
-
-如果它对你有帮助，欢迎给仓库点一个 Star：
-
-- [Star Clash for Claw](https://github.com/KeyanHu-git/Clash-for-Claw)
-
-这会让我更有动力把以下事情继续做下去：
+这会直接帮助这个项目继续往下做：
 
 - 更稳定的服务模式
+- 更成熟的发布与分发
 - 更完整的订阅体验
-- 更漂亮的安装与分发
-- 更成熟的图标、品牌和视觉细节
+- 更统一的品牌、图标与视觉细节
 
 ## 致谢
 
@@ -200,8 +230,3 @@ dotnet build OpenClawAdapter.csproj -p:Platform=x64
 - 标题：一起赛博摸鱼呀——数学公式下的生命构型与动态
 - 时间：2025/08/04
 - 来源：https://www.heywhale.com/mw/project/687e3f38c678037e34ebf61e
-
-## 说明
-
-- 本项目与 Clash for Windows 无官方从属关系
-- 当前仍在快速迭代中，README 会随版本继续更新
