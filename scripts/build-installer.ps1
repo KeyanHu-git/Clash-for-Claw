@@ -100,19 +100,7 @@ UseLongFileName=1
 InsideCompressed=0
 CAB_FixedSize=0
 CAB_ResvCodeSigning=0
-RebootMode=N
-InstallPrompt=%InstallPrompt%
-DisplayLicense=%DisplayLicense%
-FinishMessage=%FinishMessage%
-TargetName=%TargetName%
-FriendlyName=%FriendlyName%
-AppLaunched=%AppLaunched%
-PostInstallCmd=%PostInstallCmd%
-AdminQuietInstCmd=%AdminQuietInstCmd%
-UserQuietInstCmd=%UserQuietInstCmd%
-SourceFiles=SourceFiles
-SelfDelete=0
-[Strings]
+RebootMode=I
 InstallPrompt=
 DisplayLicense=
 FinishMessage=
@@ -122,6 +110,15 @@ AppLaunched=cmd.exe /d /s /c ""install.cmd""
 PostInstallCmd=<None>
 AdminQuietInstCmd=cmd.exe /d /s /c ""install.cmd /quiet""
 UserQuietInstCmd=cmd.exe /d /s /c ""install.cmd /quiet""
+SourceFiles=SourceFiles
+SelfDelete=0
+FILE0=install.cmd
+FILE1=install.ps1
+FILE2=uninstall.cmd
+FILE3=uninstall.ps1
+FILE4=package-info.json
+FILE5=payload.zip
+[Strings]
 FILE0=install.cmd
 FILE1=install.ps1
 FILE2=uninstall.cmd
@@ -145,8 +142,13 @@ $iexpress = Join-Path $env:SystemRoot "System32\\iexpress.exe"
 if ($LASTEXITCODE -ne 0) {
     throw "IExpress failed with exit code $LASTEXITCODE."
 }
+
+$deadline = (Get-Date).AddMinutes(2)
+while ((Get-Date) -lt $deadline -and -not (Test-Path $setupExe)) {
+    Start-Sleep -Seconds 2
+}
 if (-not (Test-Path $setupExe)) {
-    throw "IExpress completed without creating $setupExe."
+    throw "IExpress did not create $setupExe within the expected time window."
 }
 
 Write-Output "Portable package: $portableZip"
