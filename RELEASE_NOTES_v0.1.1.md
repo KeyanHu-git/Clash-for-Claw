@@ -10,4 +10,3 @@
 ## Files
 
 - `Clash-for-Claw-0.1.1-setup.exe`: recommended installer for most users
-- `Clash-for-Claw-0.1.1-portable-win-x64.zip`: portable self-contained package
