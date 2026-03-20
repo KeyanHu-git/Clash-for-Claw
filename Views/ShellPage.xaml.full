@@ -1,0 +1,369 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<Page
+    x:Class="OpenClawAdapter.Views.ShellPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:OpenClawAdapter"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    FontFamily="Segoe UI Variable Text"
+    Loaded="OnLoaded"
+    mc:Ignorable="d">
+    <Page.Resources>
+        <LinearGradientBrush x:Key="NavGlowLineBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#0022D3EE" Offset="0" />
+            <GradientStop Color="#AA22D3EE" Offset="0.35" />
+            <GradientStop Color="#AA2DD4BF" Offset="0.7" />
+            <GradientStop Color="#002DD4BF" Offset="1" />
+        </LinearGradientBrush>
+
+        <Storyboard x:Name="FluidMotionStoryboard">
+            <DoubleAnimation
+                Storyboard.TargetName="GlowATransform"
+                Storyboard.TargetProperty="TranslateX"
+                Duration="0:01:00"
+                To="120"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowATransform"
+                Storyboard.TargetProperty="TranslateY"
+                Duration="0:01:08"
+                To="90"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowATransform"
+                Storyboard.TargetProperty="ScaleX"
+                Duration="0:01:20"
+                To="1.06"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowATransform"
+                Storyboard.TargetProperty="ScaleY"
+                Duration="0:01:24"
+                To="1.06"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+
+            <DoubleAnimation
+                Storyboard.TargetName="GlowBTransform"
+                Storyboard.TargetProperty="TranslateX"
+                Duration="0:01:12"
+                To="-150"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowBTransform"
+                Storyboard.TargetProperty="TranslateY"
+                Duration="0:01:18"
+                To="-110"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowBTransform"
+                Storyboard.TargetProperty="ScaleX"
+                Duration="0:01:34"
+                To="1.08"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowBTransform"
+                Storyboard.TargetProperty="ScaleY"
+                Duration="0:01:40"
+                To="1.08"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+
+            <DoubleAnimation
+                Storyboard.TargetName="GlowCTransform"
+                Storyboard.TargetProperty="TranslateX"
+                Duration="0:00:58"
+                To="95"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowCTransform"
+                Storyboard.TargetProperty="TranslateY"
+                Duration="0:01:04"
+                To="-70"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowCTransform"
+                Storyboard.TargetProperty="ScaleX"
+                Duration="0:01:16"
+                To="1.05"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowCTransform"
+                Storyboard.TargetProperty="ScaleY"
+                Duration="0:01:22"
+                To="1.05"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowC"
+                Storyboard.TargetProperty="Opacity"
+                Duration="0:01:10"
+                To="0.65"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+
+            <DoubleAnimation
+                Storyboard.TargetName="GlowDTransform"
+                Storyboard.TargetProperty="TranslateX"
+                Duration="0:01:30"
+                To="-70"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowDTransform"
+                Storyboard.TargetProperty="TranslateY"
+                Duration="0:01:38"
+                To="80"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowDTransform"
+                Storyboard.TargetProperty="ScaleX"
+                Duration="0:01:48"
+                To="1.07"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowDTransform"
+                Storyboard.TargetProperty="ScaleY"
+                Duration="0:01:54"
+                To="1.07"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowD"
+                Storyboard.TargetProperty="Opacity"
+                Duration="0:01:24"
+                To="0.38"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+
+            <DoubleAnimation
+                Storyboard.TargetName="GlowETransform"
+                Storyboard.TargetProperty="TranslateX"
+                Duration="0:01:10"
+                To="130"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowETransform"
+                Storyboard.TargetProperty="TranslateY"
+                Duration="0:01:20"
+                To="-90"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowETransform"
+                Storyboard.TargetProperty="ScaleX"
+                Duration="0:01:32"
+                To="1.09"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowETransform"
+                Storyboard.TargetProperty="ScaleY"
+                Duration="0:01:38"
+                To="1.09"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+            <DoubleAnimation
+                Storyboard.TargetName="GlowE"
+                Storyboard.TargetProperty="Opacity"
+                Duration="0:01:18"
+                To="0.5"
+                AutoReverse="True"
+                RepeatBehavior="Forever" />
+        </Storyboard>
+    </Page.Resources>
+
+    <Grid Background="{ThemeResource AppBackgroundBrush}">
+        <Canvas x:Name="FluidCanvas" IsHitTestVisible="False" Opacity="0.72">
+            <Ellipse
+                x:Name="GlowA"
+                Canvas.Left="-180"
+                Canvas.Top="-160"
+                Fill="{ThemeResource GlowPrimaryBrush}"
+                Height="420"
+                Width="420"
+                RenderTransformOrigin="0.5,0.5">
+                <Ellipse.RenderTransform>
+                    <CompositeTransform x:Name="GlowATransform" />
+                </Ellipse.RenderTransform>
+            </Ellipse>
+            <Ellipse
+                x:Name="GlowB"
+                Canvas.Left="760"
+                Canvas.Top="420"
+                Fill="{ThemeResource GlowSecondaryBrush}"
+                Height="360"
+                Width="360"
+                RenderTransformOrigin="0.5,0.5">
+                <Ellipse.RenderTransform>
+                    <CompositeTransform x:Name="GlowBTransform" />
+                </Ellipse.RenderTransform>
+            </Ellipse>
+            <Ellipse
+                x:Name="GlowC"
+                Canvas.Left="240"
+                Canvas.Top="120"
+                Fill="{ThemeResource GlowPrimaryBrush}"
+                Height="260"
+                Width="260"
+                Opacity="0.45"
+                RenderTransformOrigin="0.5,0.5">
+                <Ellipse.RenderTransform>
+                    <CompositeTransform x:Name="GlowCTransform" />
+                </Ellipse.RenderTransform>
+            </Ellipse>
+            <Ellipse
+                x:Name="GlowD"
+                Canvas.Left="80"
+                Canvas.Top="520"
+                Fill="{ThemeResource GlowSecondaryBrush}"
+                Height="520"
+                Width="520"
+                Opacity="0.28"
+                RenderTransformOrigin="0.5,0.5">
+                <Ellipse.RenderTransform>
+                    <CompositeTransform x:Name="GlowDTransform" />
+                </Ellipse.RenderTransform>
+            </Ellipse>
+            <Ellipse
+                x:Name="GlowE"
+                Canvas.Left="640"
+                Canvas.Top="-120"
+                Fill="{ThemeResource GlowSecondaryBrush}"
+                Height="300"
+                Width="300"
+                Opacity="0.32"
+                RenderTransformOrigin="0.5,0.5">
+                <Ellipse.RenderTransform>
+                    <CompositeTransform x:Name="GlowETransform" />
+                </Ellipse.RenderTransform>
+            </Ellipse>
+        </Canvas>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border
+                x:Name="AppTitleBar"
+                Grid.Row="0"
+                Background="{ThemeResource ToolbarBackgroundBrush}"
+                CornerRadius="10"
+                Padding="8,4">
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="2">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border
+                                Background="{ThemeResource AccentBrush}"
+                                CornerRadius="3"
+                                Height="6"
+                                VerticalAlignment="Center"
+                                Width="6" />
+                            <TextBlock Style="{StaticResource BrandText}" Text="OpenClaw" />
+                            <TextBlock Style="{StaticResource MutedText}" Text="适配器" />
+                        </StackPanel>
+                        <TextBlock
+                            Style="{StaticResource MutedText}"
+                            Text="{Binding ConnectionDetail}"
+                            TextWrapping="WrapWholeWords" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+                        <Border Background="{Binding ConnectionStatusBrush}" CornerRadius="999" Padding="7,3">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Ellipse Height="5" Width="5" Fill="White" VerticalAlignment="Center" />
+                                <TextBlock Foreground="White" FontWeight="SemiBold" FontSize="10" Text="{Binding ConnectionState}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Background="{ThemeResource PillBackgroundBrush}" CornerRadius="999" Padding="7,3">
+                            <TextBlock
+                                Foreground="{ThemeResource AccentBrush}"
+                                FontWeight="SemiBold"
+                                FontSize="10"
+                                Text="{Binding ModeSummary}" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="10,2,10,10">
+                <Border
+                    Background="{ThemeResource SurfaceBrush}"
+                    BorderBrush="{ThemeResource NavPaneBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                    <NavigationView
+                        x:Name="NavView"
+                        Background="Transparent"
+                        PaneBackground="{ThemeResource NavPaneBackgroundBrush}"
+                        CompactPaneLength="48"
+                        ExpandedModeThresholdWidth="1200"
+                        CompactModeThresholdWidth="640"
+                        IsBackButtonVisible="Collapsed"
+                        IsPaneOpen="False"
+                        IsPaneToggleButtonVisible="True"
+                        IsSettingsVisible="False"
+                        OpenPaneLength="184"
+                        PaneDisplayMode="Auto"
+                        SelectionChanged="OnNavigationSelectionChanged">
+                        <NavigationView.MenuItems>
+                            <NavigationViewItem Content="概览" Tag="dashboard" ToolTipService.ToolTip="概览">
+                                <NavigationViewItem.Icon>
+                                    <SymbolIcon Symbol="Home" />
+                                </NavigationViewItem.Icon>
+                            </NavigationViewItem>
+                            <NavigationViewItem Content="设置" Tag="settings" ToolTipService.ToolTip="设置">
+                                <NavigationViewItem.Icon>
+                                    <SymbolIcon Symbol="Setting" />
+                                </NavigationViewItem.Icon>
+                            </NavigationViewItem>
+                            <NavigationViewItem Content="日志与高级" Tag="logs" ToolTipService.ToolTip="日志与高级">
+                                <NavigationViewItem.Icon>
+                                    <SymbolIcon Symbol="Document" />
+                                </NavigationViewItem.Icon>
+                            </NavigationViewItem>
+</NavigationView.MenuItems>
+                        <NavigationView.Content>
+                            <Frame x:Name="ContentFrame" />
+                        </NavigationView.Content>
+                    </NavigationView>
+                </Border>
+
+                <Border
+                    HorizontalAlignment="Left"
+                    Width="6"
+                    Background="{ThemeResource GlowSecondaryBrush}"
+                    Opacity="0.35"
+                    CornerRadius="3"
+                    Panel.ZIndex="2"
+                    IsHitTestVisible="False" />
+                <Border
+                    HorizontalAlignment="Left"
+                    Width="1"
+                    Background="{StaticResource NavGlowLineBrush}"
+                    Opacity="0.9"
+                    Panel.ZIndex="3"
+                    IsHitTestVisible="False" />
+            </Grid>
+        </Grid>
+    </Grid>
+</Page>
+

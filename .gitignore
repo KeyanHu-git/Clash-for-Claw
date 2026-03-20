@@ -1,0 +1,19 @@
+# Build output
+bin/
+obj/
+
+# Local diagnostics and scratch files
+.tmp/
+artifacts/
+*.log
+*.out
+*.err
+*.bak
+xamlc.err
+xamlc.out
+openclaw-adapter.png
+
+# IDE / local state
+.vs/
+*.user
+*.suo

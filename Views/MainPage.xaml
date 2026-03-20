@@ -1,0 +1,327 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<Page
+    x:Class="OpenClawAdapter.Views.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Loaded="OnLoaded"
+    mc:Ignorable="d">
+    <ScrollViewer>
+        <Grid x:Name="LayoutRoot">
+            <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup>
+                    <VisualState x:Name="Wide">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="920" />
+                        </VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="CardsColumnB.Width" Value="*" />
+                            <Setter Target="CardConnection.(Grid.Column)" Value="0" />
+                            <Setter Target="CardConnection.(Grid.Row)" Value="0" />
+                            <Setter Target="CardConnection.(Grid.ColumnSpan)" Value="1" />
+                            <Setter Target="CardGateway.(Grid.Column)" Value="1" />
+                            <Setter Target="CardGateway.(Grid.Row)" Value="0" />
+                            <Setter Target="CardGateway.(Grid.ColumnSpan)" Value="1" />
+                            <Setter Target="OverviewStatusColumn2.Width" Value="*" />
+                            <Setter Target="OverviewStatusColumn3.Width" Value="*" />
+                            <Setter Target="StatusCardGateway.(Grid.Column)" Value="1" />
+                            <Setter Target="StatusCardGateway.(Grid.Row)" Value="0" />
+                            <Setter Target="StatusCardGateway.(Grid.ColumnSpan)" Value="1" />
+                            <Setter Target="StatusCardInternet.(Grid.Column)" Value="2" />
+                            <Setter Target="StatusCardInternet.(Grid.Row)" Value="0" />
+                            <Setter Target="StatusCardInternet.(Grid.ColumnSpan)" Value="1" />
+                            <Setter Target="OverviewActionColumn3.Width" Value="*" />
+                            <Setter Target="OverviewActionColumn4.Width" Value="*" />
+                            <Setter Target="ReloadButton.(Grid.Column)" Value="2" />
+                            <Setter Target="ReloadButton.(Grid.Row)" Value="0" />
+                            <Setter Target="ProbeButton.(Grid.Column)" Value="3" />
+                            <Setter Target="ProbeButton.(Grid.Row)" Value="0" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Medium">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="520" />
+                        </VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="ContentStack.Padding" Value="5,3,5,5" />
+                            <Setter Target="CardsGrid.ColumnSpacing" Value="5" />
+                            <Setter Target="CardsGrid.RowSpacing" Value="5" />
+                            <Setter Target="CardsColumnB.Width" Value="0" />
+                            <Setter Target="CardConnection.(Grid.Column)" Value="0" />
+                            <Setter Target="CardConnection.(Grid.Row)" Value="0" />
+                            <Setter Target="CardConnection.(Grid.ColumnSpan)" Value="2" />
+                            <Setter Target="CardGateway.(Grid.Column)" Value="0" />
+                            <Setter Target="CardGateway.(Grid.Row)" Value="1" />
+                            <Setter Target="CardGateway.(Grid.ColumnSpan)" Value="2" />
+                            <Setter Target="OverviewStatusColumn2.Width" Value="*" />
+                            <Setter Target="OverviewStatusColumn3.Width" Value="0" />
+                            <Setter Target="StatusCardGateway.(Grid.Column)" Value="1" />
+                            <Setter Target="StatusCardGateway.(Grid.Row)" Value="0" />
+                            <Setter Target="StatusCardGateway.(Grid.ColumnSpan)" Value="1" />
+                            <Setter Target="StatusCardInternet.(Grid.Column)" Value="0" />
+                            <Setter Target="StatusCardInternet.(Grid.Row)" Value="1" />
+                            <Setter Target="StatusCardInternet.(Grid.ColumnSpan)" Value="2" />
+                            <Setter Target="OverviewActionColumn3.Width" Value="0" />
+                            <Setter Target="OverviewActionColumn4.Width" Value="0" />
+                            <Setter Target="ReloadButton.(Grid.Column)" Value="0" />
+                            <Setter Target="ReloadButton.(Grid.Row)" Value="1" />
+                            <Setter Target="ProbeButton.(Grid.Column)" Value="1" />
+                            <Setter Target="ProbeButton.(Grid.Row)" Value="1" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Narrow">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="0" />
+                        </VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="ContentStack.Padding" Value="5,3,5,5" />
+                            <Setter Target="CardsGrid.ColumnSpacing" Value="5" />
+                            <Setter Target="CardsGrid.RowSpacing" Value="5" />
+                            <Setter Target="CardsColumnB.Width" Value="0" />
+                            <Setter Target="CardConnection.(Grid.Column)" Value="0" />
+                            <Setter Target="CardConnection.(Grid.Row)" Value="0" />
+                            <Setter Target="CardConnection.(Grid.ColumnSpan)" Value="2" />
+                            <Setter Target="CardGateway.(Grid.Column)" Value="0" />
+                            <Setter Target="CardGateway.(Grid.Row)" Value="1" />
+                            <Setter Target="CardGateway.(Grid.ColumnSpan)" Value="2" />
+                            <Setter Target="OverviewStatusColumn2.Width" Value="0" />
+                            <Setter Target="OverviewStatusColumn3.Width" Value="0" />
+                            <Setter Target="StatusCardGateway.(Grid.Column)" Value="0" />
+                            <Setter Target="StatusCardGateway.(Grid.Row)" Value="1" />
+                            <Setter Target="StatusCardGateway.(Grid.ColumnSpan)" Value="1" />
+                            <Setter Target="StatusCardInternet.(Grid.Column)" Value="0" />
+                            <Setter Target="StatusCardInternet.(Grid.Row)" Value="2" />
+                            <Setter Target="StatusCardInternet.(Grid.ColumnSpan)" Value="1" />
+                            <Setter Target="OverviewActionColumn3.Width" Value="0" />
+                            <Setter Target="OverviewActionColumn4.Width" Value="0" />
+                            <Setter Target="ReloadButton.(Grid.Column)" Value="0" />
+                            <Setter Target="ReloadButton.(Grid.Row)" Value="1" />
+                            <Setter Target="ProbeButton.(Grid.Column)" Value="1" />
+                            <Setter Target="ProbeButton.(Grid.Row)" Value="1" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+
+            <StackPanel x:Name="ContentStack" Padding="5,3,5,5" Spacing="5">
+                <Border
+                    Background="{ThemeResource ToolbarBackgroundBrush}"
+                    BorderThickness="0"
+                    CornerRadius="12"
+                    Padding="10,9">
+                    <Grid RowSpacing="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Spacing="2">
+                                <TextBlock Style="{StaticResource TitleText}" Text="概览" />
+                                <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="模式切换、链路状态与即时操作" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid x:Name="OverviewStatusGrid" Grid.Row="1" ColumnSpacing="8" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition x:Name="OverviewStatusColumn2" Width="*" />
+                                <ColumnDefinition x:Name="OverviewStatusColumn3" Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Border Background="{ThemeResource SurfaceAltBrush}" CornerRadius="10" Padding="10,8">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="本地服务" />
+                                    <TextBlock FontWeight="SemiBold" Foreground="{Binding LocalStatusBrush}" Text="{Binding LocalStatusText}" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="StatusCardGateway" Grid.Column="1" Background="{ThemeResource SurfaceAltBrush}" CornerRadius="10" Padding="10,8">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="网关探测" />
+                                    <TextBlock FontWeight="SemiBold" Foreground="{Binding GatewayStatusBrush}" Text="{Binding GatewayStatusText}" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="StatusCardInternet" Grid.Column="2" Background="{ThemeResource SurfaceAltBrush}" CornerRadius="10" Padding="10,8">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="互联网" />
+                                    <TextBlock FontWeight="SemiBold" Foreground="{Binding InternetStatusBrush}" Text="{Binding InternetStatusText}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Grid Grid.Row="2" x:Name="OverviewActionGrid" ColumnSpacing="8" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition x:Name="OverviewActionColumn3" Width="*" />
+                                <ColumnDefinition x:Name="OverviewActionColumn4" Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Button x:Name="SubscriptionModeButton" Click="OnSubscriptionModeClicked" Style="{StaticResource OverviewSecondaryButton}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <SymbolIcon Symbol="Download" />
+                                    <TextBlock Text="订阅" />
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="LocalModeButton" Grid.Column="1" Click="OnLocalModeClicked" Style="{StaticResource OverviewSecondaryButton}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <SymbolIcon Symbol="Link" />
+                                    <TextBlock Text="本地端口" />
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="ReloadButton" Grid.Column="2" Click="OnReloadClicked" Style="{StaticResource OverviewSecondaryButton}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <SymbolIcon Symbol="Refresh" />
+                                    <TextBlock Text="重载配置" />
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="ProbeButton" Grid.Column="3" Click="OnProbeClicked" Style="{StaticResource OverviewSecondaryButton}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <SymbolIcon Symbol="Find" />
+                                    <TextBlock Text="探测连通" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Grid x:Name="CardsGrid" ColumnSpacing="6" RowSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="CardsColumnA" Width="*" />
+                        <ColumnDefinition x:Name="CardsColumnB" Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Border
+                        x:Name="CardConnection"
+                        Grid.Column="0"
+                        Grid.Row="0"
+                        Style="{StaticResource Card}"
+                        MinHeight="148">
+                        <Grid RowSpacing="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Grid ColumnSpacing="8">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Style="{StaticResource SectionTitle}" Text="运行反馈" />
+                                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="最近动作、当前回执与回退策略" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Grid.Row="1" Background="{ThemeResource SurfaceAltBrush}" CornerRadius="10" Padding="10,8">
+                                <TextBlock Text="{Binding ConnectionDetail}" TextWrapping="WrapWholeWords" />
+                            </Border>
+
+                            <Grid Grid.Row="2" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Background="{ThemeResource SurfaceAltBrush}" CornerRadius="9" Padding="8,6">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="上次重载" />
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding LastReloadText}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="1" Background="{ThemeResource SurfaceAltBrush}" CornerRadius="9" Padding="8,6">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="策略说明" />
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding ModeHint}" TextWrapping="WrapWholeWords" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border
+                        x:Name="CardGateway"
+                        Grid.Column="1"
+                        Grid.Row="0"
+                        Style="{StaticResource Card}"
+                        MinHeight="184">
+                        <Grid RowSpacing="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Spacing="2">
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="网关配置" />
+                                <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="地址、令牌与系统代理控制" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1" Spacing="5">
+                                <TextBox
+                                    Header="网关地址"
+                                    Style="{StaticResource InputTextBox}"
+                                    Text="{Binding GatewayUrl, Mode=TwoWay}"
+                                    PlaceholderText="http://127.0.0.1:18789"
+                                    LostFocus="OnGatewayUrlLostFocus" />
+                                <PasswordBox
+                                    x:Name="TokenBox"
+                                    Header="访问令牌"
+                                    Style="{StaticResource InputPasswordBox}"
+                                    PasswordRevealMode="Hidden"
+                                    PlaceholderText="不会回显，仅用于本机验证"
+                                    PasswordChanged="OnTokenPasswordChanged" />
+                                <ToggleSwitch
+                                    x:Name="SystemProxySwitch"
+                                    IsOn="False"
+                                    OffContent="系统代理已关闭"
+                                    OnContent="系统代理已开启"
+                                    Toggled="OnSystemProxyToggled" />
+                            </StackPanel>
+
+                            <Grid Grid.Row="2" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Background="{ThemeResource SurfaceAltBrush}" CornerRadius="9" Padding="8,6">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="令牌状态" />
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding GatewayTokenStatusText}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="1" Background="{ThemeResource SurfaceAltBrush}" CornerRadius="9" Padding="8,6">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="代理端口" />
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding LocalPort}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                        </Grid>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Page>

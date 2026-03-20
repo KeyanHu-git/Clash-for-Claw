@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "OpenClawAdapter (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "OpenClawAdapter (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
