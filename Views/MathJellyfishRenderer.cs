@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Microsoft.Graphics.Canvas;
@@ -7,7 +7,7 @@ using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 using Windows.UI;
 
-namespace OpenClawAdapter.Views;
+namespace ClashForClaw.Views;
 
 // Math-driven jellyfish inspired by a Heywhale community project (Shelter, 2025-08-04).
 internal sealed class MathJellyfishRenderer
@@ -421,5 +421,3 @@ internal sealed class MathJellyfishRenderer
         LittleJellyfish,
     }
 }
-
-

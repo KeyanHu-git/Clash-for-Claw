@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace OpenClawAdapter.Services;
+namespace ClashForClaw.Services;
 
 public sealed class AdapterApiClient
 {
@@ -33,7 +33,7 @@ public sealed class AdapterApiClient
         => SendAsync<AdapterConfigResponse>(HttpMethod.Get, "/config", null, false);
 
     public Task<AdapterStatusResponse> GetStatusAsync()
-        => SendAsync<AdapterStatusResponse>(HttpMethod.Get, "/status", null, false);
+        => SendAsync<AdapterStatusResponse>(HttpMethod.Get, "/status", null, false, requireOkResponse: false);
 
     public Task<AdapterReloadResponse> ReloadAsync()
         => SendAsync<AdapterReloadResponse>(HttpMethod.Post, "/config/reload", new { }, true);
@@ -96,7 +96,7 @@ public sealed class AdapterApiClient
         return resp.Url ?? string.Empty;
     }
 
-    private async Task<T> SendAsync<T>(HttpMethod method, string path, object? payload, bool requireNonce)
+    private async Task<T> SendAsync<T>(HttpMethod method, string path, object? payload, bool requireNonce, bool requireOkResponse = true)
         where T : AdapterBaseResponse
     {
         var attempt = 0;
@@ -133,7 +133,7 @@ public sealed class AdapterApiClient
                 {
                     throw new InvalidOperationException("Invalid response.");
                 }
-                if (!parsed.Ok)
+                if (requireOkResponse && !parsed.Ok)
                 {
                     throw new InvalidOperationException(string.IsNullOrWhiteSpace(parsed.Error) ? "Request failed." : parsed.Error);
                 }
@@ -157,25 +157,12 @@ public sealed class AdapterApiClient
             return;
         }
 
-        var html = await httpClient.GetStringAsync(BaseUrl + "/");
-        nonce = ExtractNonce(html);
-    }
-
-    private static string? ExtractNonce(string html)
-    {
-        const string marker = "adapter-nonce\" content=\"";
-        var idx = html.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-        if (idx < 0)
+        var response = await SendAsync<AdapterNonceResponse>(HttpMethod.Get, "/nonce", null, false);
+        if (string.IsNullOrWhiteSpace(response.Nonce))
         {
-            return null;
+            throw new InvalidOperationException("本地服务未返回授权令牌。");
         }
-        idx += marker.Length;
-        var end = html.IndexOf('"', idx);
-        if (end <= idx)
-        {
-            return null;
-        }
-        return html.Substring(idx, end - idx);
+        nonce = response.Nonce;
     }
 }
 
@@ -192,6 +179,12 @@ public sealed class AdapterCopyResponse : AdapterBaseResponse
 {
     [JsonPropertyName("url")]
     public string? Url { get; set; }
+}
+
+public sealed class AdapterNonceResponse : AdapterBaseResponse
+{
+    [JsonPropertyName("nonce")]
+    public string? Nonce { get; set; }
 }
 
 public sealed class AdapterConfigResponse : AdapterBaseResponse
@@ -270,6 +263,15 @@ public sealed class AdapterProxyStatus
 
     [JsonPropertyName("effective_mode")]
     public string? EffectiveMode { get; set; }
+
+    [JsonPropertyName("proxy_url")]
+    public string? ProxyUrl { get; set; }
+
+    [JsonPropertyName("mihomo_active")]
+    public bool MihomoActive { get; set; }
+
+    [JsonPropertyName("mihomo_error")]
+    public string? MihomoError { get; set; }
 
     [JsonPropertyName("fallback")]
     public bool Fallback { get; set; }
@@ -367,3 +369,4 @@ public sealed class AdapterSubscription
     [JsonPropertyName("updated_at")]
     public long UpdatedAt { get; set; }
 }
+

@@ -1,14 +1,15 @@
 ﻿using Microsoft.Win32;
-using OpenClawAdapter.Models;
+using ClashForClaw.Models;
 
-namespace OpenClawAdapter.Services;
+namespace ClashForClaw.Services;
 
 public static class StartupManager
 {
     private const string RunKeyPath = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-    private const string AppRunName = "OpenClawAdapter";
+    private const string AppRunName = "ClashForClaw";
+    private const string LegacyAppRunName = "OpenClawAdapter";
 
-    public static void ApplyAutoStart(AppSettings settings)
+    public static void ApplyAutoStart(AppSettings settings, bool serviceModeEnabled)
     {
         try
         {
@@ -18,7 +19,9 @@ public static class StartupManager
                 return;
             }
 
-            if (settings.AutoStartEnabled && !settings.ServiceModeEnabled)
+            key.DeleteValue(LegacyAppRunName, false);
+
+            if (settings.AutoStartEnabled && !serviceModeEnabled)
             {
                 var silentArg = settings.SilentOnBootEnabled ? " --silent" : string.Empty;
                 var value = $"\"{AppPaths.AppExecutablePath}\"{silentArg}";
@@ -35,3 +38,4 @@ public static class StartupManager
         }
     }
 }
+

@@ -1,19 +1,19 @@
-using System.Diagnostics;
-using OpenClawAdapter.Models;
+﻿using System.Diagnostics;
+using ClashForClaw.Models;
 
-namespace OpenClawAdapter.Services;
+namespace ClashForClaw.Services;
 
 public sealed class CliRunner
 {
     private Process? process;
     private string? lastCommand;
 
-    public void EnsureRunning(AppSettings settings)
+    public bool EnsureRunning(AppSettings settings, bool force = false)
     {
-        if (!settings.AutoRunCliEnabled)
+        if (!settings.AutoRunCliEnabled && !force)
         {
             Stop();
-            return;
+            return false;
         }
 
         var cliPath = AppPaths.ResolveCliPath(settings.CliPath);
@@ -22,11 +22,11 @@ public sealed class CliRunner
 
         if (process is not null && !process.HasExited && string.Equals(lastCommand, command, StringComparison.Ordinal))
         {
-            return;
+            return true;
         }
 
         Stop();
-        Start(cliPath, args, trackProcess: true);
+        return Start(cliPath, args, trackProcess: true);
     }
 
     public bool TryStartOnDemand(AppSettings settings)
@@ -104,4 +104,5 @@ public sealed class CliRunner
         }
     }
 }
+
 

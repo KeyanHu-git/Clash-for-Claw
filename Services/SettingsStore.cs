@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text.Json;
-using OpenClawAdapter.Models;
+using ClashForClaw.Models;
 
-namespace OpenClawAdapter.Services;
+namespace ClashForClaw.Services;
 
 public static class SettingsStore
 {
@@ -16,13 +16,12 @@ public static class SettingsStore
 
     public static event EventHandler? Changed;
 
-    public static string SettingsPath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "OpenClawAdapter",
-        "settings.json");
+    public static string SettingsPath => Path.Combine(AppPaths.UserDataDirectory, "settings.json");
 
     public static void Load()
     {
+        AppPaths.PurgeLegacyData();
+
         try
         {
             if (File.Exists(SettingsPath))
@@ -53,10 +52,14 @@ public static class SettingsStore
 
     private static void EnsureDefaults()
     {
-        if (string.IsNullOrWhiteSpace(Current.CliPath)
-            || string.Equals(Current.CliPath, "openclaw-adapter-cli.exe", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(Current.CliPath))
         {
-            Current.CliPath = "OpenClaw-Adapter.exe";
+            Current.CliPath = string.Empty;
+        }
+
+        if (IsLegacyCliPath(Current.CliPath))
+        {
+            Current.CliPath = string.Empty;
         }
 
         if (string.IsNullOrWhiteSpace(Current.CliArgs)
@@ -88,6 +91,19 @@ public static class SettingsStore
             Current.SubscriptionColumns = 3;
         }
     }
+
+    private static bool IsLegacyCliPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        return path.Contains("OpenClaw-Adapter", StringComparison.OrdinalIgnoreCase)
+            || path.Contains("OpenClawAdapter", StringComparison.OrdinalIgnoreCase)
+            || path.Contains("openclaw-adapter", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static void Save()
     {
         var dir = Path.GetDirectoryName(SettingsPath);
@@ -100,4 +116,5 @@ public static class SettingsStore
         File.WriteAllText(SettingsPath, json);
     }
 }
+
 

@@ -13,6 +13,10 @@ xamlc.err
 xamlc.out
 openclaw-adapter.png
 
+# Optional local runtime assets
+backend/ClashForClaw.Service/internal/mihomo/assets/
+backend/ClashForClaw.Service/bin/
+
 # IDE / local state
 .vs/
 *.user

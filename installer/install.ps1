@@ -7,7 +7,9 @@ $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 function Stop-AppProcess {
-    Get-Process -Name "OpenClawAdapter" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    "ClashForClaw", "OpenClawAdapter" | ForEach-Object {
+        Get-Process -Name $_ -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function New-Shortcut {
@@ -43,7 +45,7 @@ $version = [string]$package.Version
 $installRoot = Join-Path $env:LOCALAPPDATA "Programs\\$appName"
 $extractRoot = Join-Path $env:TEMP ("ClashForClawInstall_" + [guid]::NewGuid().ToString("N"))
 $payloadRoot = Join-Path $extractRoot "payload"
-$appExe = Join-Path $installRoot "OpenClawAdapter.exe"
+$appExe = Join-Path $installRoot "ClashForClaw.exe"
 $iconPath = Join-Path $installRoot "Assets\\ClashForClaw.ico"
 $startMenuDir = Join-Path $env:APPDATA "Microsoft\\Windows\\Start Menu\\Programs"
 $shortcutPath = Join-Path $startMenuDir "$appName.lnk"

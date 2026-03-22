@@ -1,6 +1,6 @@
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 
-namespace OpenClawAdapter.Controls;
+namespace ClashForClaw.Controls;
 
 public sealed class BooleanStateTrigger : StateTriggerBase
 {
@@ -38,3 +38,4 @@ public sealed class BooleanStateTrigger : StateTriggerBase
         }
     }
 }
+

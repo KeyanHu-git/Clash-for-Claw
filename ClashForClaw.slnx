@@ -1,5 +1,5 @@
 <Solution>
-    <Project Path="OpenClawAdapter.csproj">
+    <Project Path="ClashForClaw.csproj">
         <Deploy />
     </Project>
     <Properties Name="Visual Studio">

@@ -1,14 +1,15 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using OpenClawAdapter.Services;
-using OpenClawAdapter.Views;
+using ClashForClaw.Services;
+using ClashForClaw.Views;
 
-namespace OpenClawAdapter
+namespace ClashForClaw
 {
     /// <summary>
     /// Provides application-specific behavior to supplement the default Application class.
@@ -43,6 +44,7 @@ namespace OpenClawAdapter
             window.Title = "Clash for Claw";
             window.ExtendsContentIntoTitleBar = true;
             TrySetWindowIcon(window);
+            TryApplySystemBackdrop(window);
 
             if (window.Content is not Frame rootFrame)
             {
@@ -68,7 +70,7 @@ namespace OpenClawAdapter
 
             if (ShouldStartSilent(e.Arguments))
             {
-                AppState.HideToTray(window);
+                window.DispatcherQueue.TryEnqueue(() => AppState.HideToTray(window));
             }
         }
 
@@ -81,7 +83,7 @@ namespace OpenClawAdapter
         {
             try
             {
-                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OpenClawAdapter");
+                var dir = AppPaths.UserDataDirectory;
                 Directory.CreateDirectory(dir);
                 var logPath = Path.Combine(dir, "crash.log");
                 File.AppendAllText(logPath, $"{DateTimeOffset.Now:u}\n{exception}\n\n");
@@ -125,6 +127,18 @@ namespace OpenClawAdapter
             }
         }
 
+        private static void TryApplySystemBackdrop(Window targetWindow)
+        {
+            try
+            {
+                targetWindow.SystemBackdrop = new MicaBackdrop();
+            }
+            catch
+            {
+                // Ignore backdrop failures on unsupported systems.
+            }
+        }
+
         private void HookWindowEvents(Window targetWindow)
         {
             var appWindow = WindowManager.GetAppWindow(targetWindow);
@@ -141,7 +155,7 @@ namespace OpenClawAdapter
                 return;
             }
 
-            if (SettingsStore.Current.CloseToTrayEnabled && !SettingsStore.Current.ServiceModeEnabled)
+            if (SettingsStore.Current.CloseToTrayEnabled && !AppState.IsServiceModeEnabled)
             {
                 args.Cancel = true;
                 if (window is not null)
@@ -153,6 +167,16 @@ namespace OpenClawAdapter
 
         private static bool ShouldStartSilent(string? args)
         {
+            if (ContainsSilentArg(args))
+            {
+                return true;
+            }
+
+            return ContainsSilentArg(string.Join(' ', Environment.GetCommandLineArgs()));
+        }
+
+        private static bool ContainsSilentArg(string? args)
+        {
             if (string.IsNullOrWhiteSpace(args))
             {
                 return false;
@@ -163,5 +187,6 @@ namespace OpenClawAdapter
         }
     }
 }
+
 
 

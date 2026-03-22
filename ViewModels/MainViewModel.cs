@@ -5,10 +5,10 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using OpenClawAdapter.Models;
-using OpenClawAdapter.Services;
+using ClashForClaw.Models;
+using ClashForClaw.Services;
 
-namespace OpenClawAdapter.ViewModels;
+namespace ClashForClaw.ViewModels;
 
 public enum StatusLevel
 {
@@ -42,8 +42,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private StatusLevel internetStatusLevel = StatusLevel.Unknown;
     private string internetStatusText = "未检测";
 
-    private double trafficUsedGb = 0.4;
-    private double trafficTotalGb = 50.0;
+    private double trafficUsedGb;
+    private double trafficTotalGb;
+    private double subscriptionTrafficUsedGb;
+    private double subscriptionTrafficTotalGb;
+    private string subscriptionTrafficUnit = "GB";
+    private DateTimeOffset? subscriptionTrafficUpdatedAt;
     private DateTimeOffset? trafficUpdatedAt;
     private DateTimeOffset? lastReloadAt;
     private string trafficUpRateText = "0 B/s";
@@ -51,13 +55,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private long lastUploadBytes;
     private long lastDownloadBytes;
     private DateTimeOffset? lastTrafficSampleAt;
+    private bool isModeSwitching;
 
     private bool autoStartEnabled = true;
     private bool silentOnBootEnabled;
     private bool closeToTrayEnabled = true;
     private bool serviceModeEnabled;
     private bool autoRunCliEnabled = true;
-    private string cliPath = "OpenClaw-Adapter.exe";
+    private string cliPath = string.Empty;
     private string cliArgs = "--daemon";
     private bool debugLoggingEnabled;
     private string themeMode = "Dark";
@@ -82,10 +87,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         AutoStartEnabled = settings.AutoStartEnabled;
         SilentOnBootEnabled = settings.SilentOnBootEnabled;
         CloseToTrayEnabled = settings.CloseToTrayEnabled;
-        ServiceModeEnabled = settings.ServiceModeEnabled;
         AutoRunCliEnabled = settings.AutoRunCliEnabled;
         CliPath = string.IsNullOrWhiteSpace(settings.CliPath)
-            ? "OpenClaw-Adapter.exe"
+            ? string.Empty
             : settings.CliPath;
         CliArgs = settings.CliArgs is null ? string.Empty : settings.CliArgs;
         DebugLoggingEnabled = settings.DebugLoggingEnabled;
@@ -140,7 +144,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string LocalPort
     {
         get => localPort;
-        set => SetField(ref localPort, value);
+        set
+        {
+            if (SetField(ref localPort, value))
+            {
+                OnPropertyChanged(nameof(ModeSwitchMessage));
+            }
+        }
     }
 
     public bool IsSubscriptionMode
@@ -153,6 +163,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(IsLocalMode));
                 OnPropertyChanged(nameof(ModeSummary));
                 OnPropertyChanged(nameof(ModeStatusBrush));
+                OnPropertyChanged(nameof(ModeSwitchMessage));
             }
         }
     }
@@ -312,7 +323,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             if (SetField(ref trafficUsedGb, value))
             {
-                OnPropertyChanged(nameof(TrafficSummary));
+                RaiseTrafficChanged();
             }
         }
     }
@@ -324,12 +335,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             if (SetField(ref trafficTotalGb, value))
             {
-                OnPropertyChanged(nameof(TrafficSummary));
+                RaiseTrafficChanged();
             }
         }
     }
 
-    public string TrafficSummary => $"{TrafficUsedGb:0.0} / {TrafficTotalGb:0.0} GB";
+    public string TrafficSummary => EffectiveTrafficTotal > 0
+        ? $"{EffectiveTrafficUsed:0.0} / {EffectiveTrafficTotal:0.0} {EffectiveTrafficUnit}"
+        : "等待同步";
+    public double TrafficUsageValue => EffectiveTrafficTotal > 0 ? Math.Max(0, EffectiveTrafficUsed) : 0;
+    public double TrafficUsageMaximum => EffectiveTrafficTotal > 0 ? EffectiveTrafficTotal : 1;
+    public string TrafficUsagePercentText => EffectiveTrafficTotal > 0
+        ? $"{Math.Min(100, EffectiveTrafficUsed / EffectiveTrafficTotal * 100):0}% 已使用"
+        : "等待同步订阅用量";
+    public string TrafficRemainingText => EffectiveTrafficTotal > 0
+        ? $"剩余 {Math.Max(0, EffectiveTrafficTotal - EffectiveTrafficUsed):0.0} {EffectiveTrafficUnit}"
+        : "总量未知";
 
     public string ShellResidencyText => ServiceModeEnabled
         ? "单机回环 · 完全静默后台"
@@ -349,9 +370,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         private set => SetField(ref trafficDownRateText, value);
     }
 
-    public string TrafficUpdatedAtText => trafficUpdatedAt is null
+    public string TrafficUpdatedAtText => EffectiveTrafficUpdatedAt is null
         ? "未刷新"
-        : $"更新于 {trafficUpdatedAt:HH:mm:ss}";
+        : $"更新于 {EffectiveTrafficUpdatedAt:HH:mm:ss}";
 
     public string LastReloadText => lastReloadAt is null
         ? "未重载"
@@ -372,6 +393,27 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string BackgroundProfileDetail => ServiceModeEnabled
         ? "当前将由 Windows 后台服务接管，启用后会关闭主窗口与托盘。"
         : "当前由桌面进程常驻，适合日常可视化管理与快速排障。";
+
+    public bool IsModeSwitching
+    {
+        get => isModeSwitching;
+        set
+        {
+            if (SetField(ref isModeSwitching, value))
+            {
+                OnPropertyChanged(nameof(CanSwitchModeButtons));
+                OnPropertyChanged(nameof(ModeSwitchMessage));
+            }
+        }
+    }
+
+    public bool CanSwitchModeButtons => !IsModeSwitching;
+
+    public string ModeSwitchMessage => !IsModeSwitching
+        ? string.Empty
+        : IsSubscriptionMode
+            ? "正在切换到订阅模式..."
+            : $"正在切换到本地端口 {LocalPort}...";
 
     public string ServiceModeHint => ServiceModeEnabled
         ? "当前已切换到服务模式。手动打开界面时，这个前台窗口只负责配置，不参与常驻。"
@@ -543,6 +585,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(TrafficUpdatedAtText));
     }
 
+    public void SetSubscriptionTrafficSnapshot(double used, double total, string? unit, DateTimeOffset? updatedAt)
+    {
+        subscriptionTrafficUsedGb = Math.Max(0, used);
+        subscriptionTrafficTotalGb = Math.Max(0, total);
+        subscriptionTrafficUnit = string.IsNullOrWhiteSpace(unit) ? "GB" : unit;
+        subscriptionTrafficUpdatedAt = updatedAt;
+        RaiseTrafficChanged();
+    }
+
+    public void ClearSubscriptionTrafficSnapshot()
+    {
+        subscriptionTrafficUsedGb = 0;
+        subscriptionTrafficTotalGb = 0;
+        subscriptionTrafficUnit = "GB";
+        subscriptionTrafficUpdatedAt = null;
+        RaiseTrafficChanged();
+    }
+
     private void SetLocalStatus(StatusLevel level, string text)
     {
         LocalStatusLevel = level;
@@ -616,6 +676,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
         return $"{abs / (1024 * 1024 * 1024):0.0} GB/s";
     }
 
+    private double EffectiveTrafficUsed => trafficTotalGb > 0 ? trafficUsedGb : subscriptionTrafficUsedGb;
+
+    private double EffectiveTrafficTotal => trafficTotalGb > 0 ? trafficTotalGb : subscriptionTrafficTotalGb;
+
+    private string EffectiveTrafficUnit => trafficTotalGb > 0 ? "GB" : subscriptionTrafficUnit;
+
+    private DateTimeOffset? EffectiveTrafficUpdatedAt => trafficTotalGb > 0 ? trafficUpdatedAt : subscriptionTrafficUpdatedAt;
+
+    private void RaiseTrafficChanged()
+    {
+        OnPropertyChanged(nameof(TrafficSummary));
+        OnPropertyChanged(nameof(TrafficUsageValue));
+        OnPropertyChanged(nameof(TrafficUsageMaximum));
+        OnPropertyChanged(nameof(TrafficUsagePercentText));
+        OnPropertyChanged(nameof(TrafficRemainingText));
+        OnPropertyChanged(nameof(TrafficUpdatedAtText));
+    }
+
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
@@ -631,3 +709,4 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
+

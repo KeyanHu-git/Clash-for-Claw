@@ -1,5 +1,5 @@
 ﻿<Page
-    x:Class="OpenClawAdapter.Views.RootPage"
+    x:Class="ClashForClaw.Views.RootPage"
     x:Name="Root"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -9,6 +9,51 @@
     Loaded="OnLoaded"
     mc:Ignorable="d">
     <Page.Resources>
+        <LinearGradientBrush x:Key="NavHoverPreviewBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#160E1727" Offset="0" />
+            <GradientStop Color="#24142134" Offset="1" />
+        </LinearGradientBrush>
+        <SolidColorBrush x:Key="NavHoverPreviewBorderBrush" Color="#2D4DD2F1" />
+        <SolidColorBrush x:Key="NavSelectedShadowBrush" Color="#D7070D15" />
+        <SolidColorBrush x:Key="NavSelectedShadowBorderBrush" Color="#E102060B" />
+        <RadialGradientBrush x:Key="NavSelectedAuraBrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.92" RadiusY="0.92">
+            <GradientStop Color="#100B1521" Offset="0" />
+            <GradientStop Color="#040B1521" Offset="0.68" />
+            <GradientStop Color="#000B1521" Offset="1" />
+        </RadialGradientBrush>
+        <LinearGradientBrush x:Key="NavSelectedOuterFillBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FF0E1724" Offset="0" />
+            <GradientStop Color="#FF132034" Offset="0.46" />
+            <GradientStop Color="#FF0A111B" Offset="1" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="NavSelectedMidFillBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#5A2C557F" Offset="0" />
+            <GradientStop Color="#1A19344F" Offset="1" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="NavSelectedCoreFillBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FF355E8A" Offset="0" />
+            <GradientStop Color="#FF223F63" Offset="0.42" />
+            <GradientStop Color="#FF15283F" Offset="1" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="NavSelectedSheenBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#00000000" Offset="0" />
+            <GradientStop Color="#3884A7BA" Offset="0.45" />
+            <GradientStop Color="#00000000" Offset="1" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="NavSelectedFlowBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#001A3143" Offset="0" />
+            <GradientStop Color="#746FAFCB" Offset="0.5" />
+            <GradientStop Color="#001A3143" Offset="1" />
+        </LinearGradientBrush>
+        <SolidColorBrush x:Key="NavSelectedShellBorderBrush" Color="#6A1A2632" />
+        <SolidColorBrush x:Key="NavSelectedInnerBorderBrush" Color="#5B365066" />
+        <LinearGradientBrush x:Key="NavSelectedPulseBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#56346997" Offset="0" />
+            <GradientStop Color="#1A244C77" Offset="1" />
+        </LinearGradientBrush>
+        <SolidColorBrush x:Key="NavSelectedCueBrush" Color="#C590AAB8" />
+        <SolidColorBrush x:Key="NavSelectedRailBrush" Color="#FF31546B" />
+
         <Style x:Key="NavLabelText" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -66,9 +111,11 @@
 
         <Style x:Key="NavItemStyle" TargetType="ListViewItem">
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="Height" Value="50" />
-            <Setter Property="Margin" Value="0,4" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="Margin" Value="0,3" />
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Foreground" Value="{ThemeResource TextMutedBrush}" />
             <Setter Property="UseSystemFocusVisuals" Value="False" />
             <Setter Property="FocusVisualPrimaryThickness" Value="0" />
@@ -77,10 +124,160 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ListViewItem">
                         <Grid>
-                            <Border x:Name="HoverLayer" Margin="3,2" CornerRadius="13" Background="#140C1524" BorderBrush="{ThemeResource NavPaneLineBrush}" BorderThickness="1" Opacity="0" />
-                            <Border x:Name="SelectGlow" Margin="1,0" CornerRadius="15" Background="{ThemeResource NavPaneGlowBrush}" Opacity="0" />
-                            <Border x:Name="SelectLayer" Margin="3,2" CornerRadius="13" Background="{ThemeResource NavSelectionFillBrush}" BorderBrush="{ThemeResource NavSelectionBorderBrush}" BorderThickness="1" Opacity="0" />
+                            <Border
+                                x:Name="HoverLayer"
+                                Margin="3,2"
+                                CornerRadius="13"
+                                Background="{StaticResource NavHoverPreviewBrush}"
+                                BorderBrush="{StaticResource NavHoverPreviewBorderBrush}"
+                                BorderThickness="1"
+                                Opacity="0" />
+
+                            <Border
+                                x:Name="SelectionAura"
+                                Margin="1,0"
+                                CornerRadius="15"
+                                Background="{StaticResource NavSelectedAuraBrush}"
+                                Opacity="0"
+                                RenderTransformOrigin="0.5,0.5">
+                                <Border.RenderTransform>
+                                    <ScaleTransform x:Name="SelectionAuraTransform" ScaleX="1" ScaleY="1" />
+                                </Border.RenderTransform>
+                            </Border>
+
+                            <Grid x:Name="SelectionLayer" Margin="3,2" Opacity="0" IsHitTestVisible="False">
+                                <Border
+                                    x:Name="SelectionShadowShell"
+                                    CornerRadius="13"
+                                    Background="{StaticResource NavSelectedShadowBrush}"
+                                    BorderBrush="{StaticResource NavSelectedShadowBorderBrush}"
+                                    BorderThickness="1.5"
+                                    Opacity="0.92" />
+
+                                <Border
+                                    x:Name="SelectionHardShell"
+                                    Margin="1.5"
+                                    CornerRadius="12"
+                                    Background="{StaticResource NavSelectedOuterFillBrush}"
+                                    BorderBrush="{StaticResource NavSelectedShellBorderBrush}"
+                                    BorderThickness="0.9" />
+
+                                <Border
+                                    x:Name="SelectionInsetShell"
+                                    Margin="3.5"
+                                    CornerRadius="10.5"
+                                    Background="{StaticResource NavSelectedMidFillBrush}"
+                                    BorderBrush="#17384C61"
+                                    BorderThickness="1"
+                                    Opacity="0.82" />
+
+                                <Border
+                                    x:Name="SelectionPulse1"
+                                    Margin="5"
+                                    CornerRadius="10"
+                                    Background="{StaticResource NavSelectedPulseBrush}"
+                                    BorderBrush="{StaticResource NavSelectedInnerBorderBrush}"
+                                    BorderThickness="1"
+                                    Opacity="0.4"
+                                    RenderTransformOrigin="0.5,0.5">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform x:Name="SelectionPulse1Transform" ScaleX="1" ScaleY="1" />
+                                    </Border.RenderTransform>
+                                </Border>
+
+                                <Border
+                                    x:Name="SelectionPulse2"
+                                    Margin="7.5"
+                                    CornerRadius="9.5"
+                                    Background="#153AAAE6"
+                                    BorderBrush="#2C40586D"
+                                    BorderThickness="1"
+                                    Opacity="0.24"
+                                    RenderTransformOrigin="0.5,0.5">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform x:Name="SelectionPulse2Transform" ScaleX="1" ScaleY="1" />
+                                    </Border.RenderTransform>
+                                </Border>
+
+                                <Border
+                                    x:Name="SelectionPulse3"
+                                    Margin="10.5"
+                                    CornerRadius="8.5"
+                                    Background="#0D82DFFF"
+                                    BorderBrush="#21384B60"
+                                    BorderThickness="1"
+                                    Opacity="0.14"
+                                    RenderTransformOrigin="0.5,0.5">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform x:Name="SelectionPulse3Transform" ScaleX="1" ScaleY="1" />
+                                    </Border.RenderTransform>
+                                </Border>
+
+                                <Border
+                                    x:Name="SelectionSheen"
+                                    Margin="12,5,34,20"
+                                    CornerRadius="8"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Top"
+                                    Height="8"
+                                    Background="{StaticResource NavSelectedSheenBrush}"
+                                    Opacity="0.12"
+                                    RenderTransformOrigin="0.5,0.5">
+                                    <Border.RenderTransform>
+                                        <CompositeTransform x:Name="SelectionSheenTransform" TranslateX="-4" />
+                                    </Border.RenderTransform>
+                                </Border>
+
+                                <Border
+                                    x:Name="SelectionPulse4"
+                                    Margin="11.5"
+                                    CornerRadius="7.5"
+                                    Background="{StaticResource NavSelectedCoreFillBrush}"
+                                    BorderBrush="#29495D70"
+                                    BorderThickness="1"
+                                    Opacity="0.94"
+                                    RenderTransformOrigin="0.5,0.5">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform x:Name="SelectionCoreTransform" ScaleX="1" ScaleY="1" />
+                                    </Border.RenderTransform>
+                                </Border>
+
+                                <Border
+                                    x:Name="SelectionCue"
+                                    Width="3"
+                                    Margin="7,7,0,7"
+                                    CornerRadius="2"
+                                    HorizontalAlignment="Left"
+                                    Background="{StaticResource NavSelectedCueBrush}"
+                                    Opacity="0.82" />
+
+                                <Grid
+                                    x:Name="SelectionRailHost"
+                                    Height="2"
+                                    Margin="14,0,14,6"
+                                    VerticalAlignment="Bottom"
+                                    IsHitTestVisible="False">
+                                    <Border
+                                        x:Name="SelectionRail"
+                                        CornerRadius="2"
+                                        Background="{StaticResource NavSelectedRailBrush}"
+                                        Opacity="0.78" />
+                                    <Border
+                                        x:Name="SelectionRailFlow"
+                                        Width="56"
+                                        HorizontalAlignment="Left"
+                                        CornerRadius="2"
+                                        Background="{StaticResource NavSelectedFlowBrush}"
+                                        Opacity="0">
+                                        <Border.RenderTransform>
+                                            <CompositeTransform x:Name="SelectionRailFlowTransform" />
+                                        </Border.RenderTransform>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+
                             <Border x:Name="PressedLayer" Margin="3,2" CornerRadius="13" Background="#2810192D" Opacity="0" />
+                            <Border x:Name="FocusLayer" Margin="3,2" CornerRadius="13" BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1" Opacity="0" IsHitTestVisible="False" />
                             <Border x:Name="ItemBorder" Margin="3,2" CornerRadius="13" Background="Transparent" BorderThickness="0" BorderBrush="Transparent" Padding="0,4" RenderTransformOrigin="0.5,0.5">
                                 <Border.RenderTransform>
                                     <CompositeTransform x:Name="ItemTransform" />
@@ -101,16 +298,16 @@
                                 </VisualState>
                                 <VisualState x:Name="PointerOver">
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="HoverLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer" Storyboard.TargetProperty="Opacity" To="0.32" Duration="0:0:0.12" />
                                         <DoubleAnimation Storyboard.TargetName="PressedLayer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.08" />
-                                        <DoubleAnimation Storyboard.TargetName="ItemTransform" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.12" />
-                                        <DoubleAnimation Storyboard.TargetName="ItemTransform" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="ItemTransform" Storyboard.TargetProperty="ScaleX" To="1.004" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="ItemTransform" Storyboard.TargetProperty="ScaleY" To="1.004" Duration="0:0:0.12" />
                                         <DoubleAnimation Storyboard.TargetName="ItemTransform" Storyboard.TargetProperty="TranslateY" To="0" Duration="0:0:0.12" />
                                     </Storyboard>
                                 </VisualState>
                                 <VisualState x:Name="Pressed">
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="HoverLayer" Storyboard.TargetProperty="Opacity" To="0.78" Duration="0:0:0.05" />
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer" Storyboard.TargetProperty="Opacity" To="0.28" Duration="0:0:0.05" />
                                         <DoubleAnimation Storyboard.TargetName="PressedLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.05" />
                                         <DoubleAnimation Storyboard.TargetName="ItemTransform" Storyboard.TargetProperty="ScaleX" To="0.972" Duration="0:0:0.06" />
                                         <DoubleAnimation Storyboard.TargetName="ItemTransform" Storyboard.TargetProperty="ScaleY" To="0.972" Duration="0:0:0.06" />
@@ -121,8 +318,16 @@
                             <VisualStateGroup x:Name="SelectionStates">
                                 <VisualState x:Name="Unselected">
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="SelectLayer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.08" />
-                                        <DoubleAnimation Storyboard.TargetName="SelectGlow" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.08" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionLayer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.1" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAura" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.1" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAuraTransform" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAuraTransform" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1Transform" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.1" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1Transform" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.1" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2Transform" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.1" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2Transform" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.1" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3Transform" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.1" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3Transform" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.1" />
                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Foreground">
                                             <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource TextMutedBrush}" />
                                         </ObjectAnimationUsingKeyFrames>
@@ -130,11 +335,111 @@
                                 </VisualState>
                                 <VisualState x:Name="Selected">
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="SelectLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.14" />
-                                        <DoubleAnimation Storyboard.TargetName="SelectGlow" Storyboard.TargetProperty="Opacity" To="0.6" Duration="0:0:0.16" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.18" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAura" Storyboard.TargetProperty="Opacity" To="0.08" Duration="0:0:0.2" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAuraTransform" Storyboard.TargetProperty="ScaleX" To="1.02" Duration="0:0:1.9" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAuraTransform" Storyboard.TargetProperty="ScaleY" To="1.02" Duration="0:0:1.9" AutoReverse="True" RepeatBehavior="Forever" />
+
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1Transform" Storyboard.TargetProperty="ScaleX" To="1.018" Duration="0:0:1.6" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1Transform" Storyboard.TargetProperty="ScaleY" To="1.018" Duration="0:0:1.6" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1" Storyboard.TargetProperty="Opacity" To="0.76" Duration="0:0:1.6" AutoReverse="True" RepeatBehavior="Forever" />
+
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2Transform" Storyboard.TargetProperty="ScaleX" To="1.032" Duration="0:0:1.9" BeginTime="0:0:0.14" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2Transform" Storyboard.TargetProperty="ScaleY" To="1.032" Duration="0:0:1.9" BeginTime="0:0:0.14" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2" Storyboard.TargetProperty="Opacity" To="0.54" Duration="0:0:1.9" BeginTime="0:0:0.14" AutoReverse="True" RepeatBehavior="Forever" />
+
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3Transform" Storyboard.TargetProperty="ScaleX" To="1.048" Duration="0:0:2.2" BeginTime="0:0:0.28" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3Transform" Storyboard.TargetProperty="ScaleY" To="1.048" Duration="0:0:2.2" BeginTime="0:0:0.28" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3" Storyboard.TargetProperty="Opacity" To="0.42" Duration="0:0:2.2" BeginTime="0:0:0.28" AutoReverse="True" RepeatBehavior="Forever" />
+
                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Foreground">
-                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentBlueBrush}" />
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="White" />
                                         </ObjectAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="SelectedUnfocused">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectionLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.18" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAura" Storyboard.TargetProperty="Opacity" To="0.04" Duration="0:0:0.16" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAuraTransform" Storyboard.TargetProperty="ScaleX" To="1.016" Duration="0:0:1.8" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAuraTransform" Storyboard.TargetProperty="ScaleY" To="1.016" Duration="0:0:1.8" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionInsetShell" Storyboard.TargetProperty="Opacity" To="0.96" Duration="0:0:1.5" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1Transform" Storyboard.TargetProperty="ScaleX" To="1.028" Duration="0:0:1.42" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1Transform" Storyboard.TargetProperty="ScaleY" To="1.028" Duration="0:0:1.42" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1" Storyboard.TargetProperty="Opacity" To="0.66" Duration="0:0:1.42" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2Transform" Storyboard.TargetProperty="ScaleX" To="1.046" Duration="0:0:1.68" BeginTime="0:0:0.12" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2Transform" Storyboard.TargetProperty="ScaleY" To="1.046" Duration="0:0:1.68" BeginTime="0:0:0.12" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2" Storyboard.TargetProperty="Opacity" To="0.42" Duration="0:0:1.68" BeginTime="0:0:0.12" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3Transform" Storyboard.TargetProperty="ScaleX" To="1.062" Duration="0:0:1.96" BeginTime="0:0:0.26" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3Transform" Storyboard.TargetProperty="ScaleY" To="1.062" Duration="0:0:1.96" BeginTime="0:0:0.26" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3" Storyboard.TargetProperty="Opacity" To="0.26" Duration="0:0:1.96" BeginTime="0:0:0.26" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionCoreTransform" Storyboard.TargetProperty="ScaleX" To="1.01" Duration="0:0:1.24" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionCoreTransform" Storyboard.TargetProperty="ScaleY" To="1.01" Duration="0:0:1.24" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse4" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:1.24" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionSheen" Storyboard.TargetProperty="Opacity" To="0.22" Duration="0:0:1.22" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionSheenTransform" Storyboard.TargetProperty="TranslateX" To="8" Duration="0:0:1.22" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionCue" Storyboard.TargetProperty="Opacity" To="0.78" Duration="0:0:1.1" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionRail" Storyboard.TargetProperty="Opacity" To="0.84" Duration="0:0:1.18" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Foreground">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="White" />
+                                        </ObjectAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="SelectedPointerOver">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectionLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.18" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAura" Storyboard.TargetProperty="Opacity" To="0.1" Duration="0:0:0.18" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAuraTransform" Storyboard.TargetProperty="ScaleX" To="1.022" Duration="0:0:1.7" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAuraTransform" Storyboard.TargetProperty="ScaleY" To="1.022" Duration="0:0:1.7" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1Transform" Storyboard.TargetProperty="ScaleX" To="1.018" Duration="0:0:1.6" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1Transform" Storyboard.TargetProperty="ScaleY" To="1.018" Duration="0:0:1.6" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1" Storyboard.TargetProperty="Opacity" To="0.76" Duration="0:0:1.6" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2Transform" Storyboard.TargetProperty="ScaleX" To="1.032" Duration="0:0:1.9" BeginTime="0:0:0.14" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2Transform" Storyboard.TargetProperty="ScaleY" To="1.032" Duration="0:0:1.9" BeginTime="0:0:0.14" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2" Storyboard.TargetProperty="Opacity" To="0.54" Duration="0:0:1.9" BeginTime="0:0:0.14" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3Transform" Storyboard.TargetProperty="ScaleX" To="1.048" Duration="0:0:2.2" BeginTime="0:0:0.28" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3Transform" Storyboard.TargetProperty="ScaleY" To="1.048" Duration="0:0:2.2" BeginTime="0:0:0.28" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3" Storyboard.TargetProperty="Opacity" To="0.42" Duration="0:0:2.2" BeginTime="0:0:0.28" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Foreground">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="White" />
+                                        </ObjectAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="SelectedPressed">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectionLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.18" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAura" Storyboard.TargetProperty="Opacity" To="0.06" Duration="0:0:0.14" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAuraTransform" Storyboard.TargetProperty="ScaleX" To="1.01" Duration="0:0:1.4" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionAuraTransform" Storyboard.TargetProperty="ScaleY" To="1.01" Duration="0:0:1.4" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1Transform" Storyboard.TargetProperty="ScaleX" To="1.018" Duration="0:0:1.6" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1Transform" Storyboard.TargetProperty="ScaleY" To="1.018" Duration="0:0:1.6" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse1" Storyboard.TargetProperty="Opacity" To="0.76" Duration="0:0:1.6" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2Transform" Storyboard.TargetProperty="ScaleX" To="1.032" Duration="0:0:1.9" BeginTime="0:0:0.14" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2Transform" Storyboard.TargetProperty="ScaleY" To="1.032" Duration="0:0:1.9" BeginTime="0:0:0.14" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse2" Storyboard.TargetProperty="Opacity" To="0.54" Duration="0:0:1.9" BeginTime="0:0:0.14" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3Transform" Storyboard.TargetProperty="ScaleX" To="1.048" Duration="0:0:2.2" BeginTime="0:0:0.28" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3Transform" Storyboard.TargetProperty="ScaleY" To="1.048" Duration="0:0:2.2" BeginTime="0:0:0.28" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionPulse3" Storyboard.TargetProperty="Opacity" To="0.42" Duration="0:0:2.2" BeginTime="0:0:0.28" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Foreground">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="White" />
+                                        </ObjectAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                            <VisualStateGroup x:Name="FocusStates">
+                                <VisualState x:Name="Unfocused">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="FocusLayer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.08" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Focused">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="FocusLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="PointerFocused">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="FocusLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" />
                                     </Storyboard>
                                 </VisualState>
                             </VisualStateGroup>
@@ -214,11 +519,12 @@
                     Padding="10,7">
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel Spacing="2" MaxWidth="440">
+                        <StackPanel Grid.Column="0" Spacing="2" MaxWidth="440" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <Border Background="{ThemeResource SurfaceAltBrush}" CornerRadius="7" Height="24" Width="24" VerticalAlignment="Center">
                                     <Image Source="ms-appx:///Assets/ClashForClaw-icon-preview.png" Stretch="Uniform" Margin="1" />
@@ -236,7 +542,7 @@
                                 TextTrimming="CharacterEllipsis" />
                         </StackPanel>
 
-                        <Border Grid.Column="1" Background="{ThemeResource SurfaceAltBrush}" CornerRadius="11" Padding="10,7" VerticalAlignment="Center">
+                        <Border Grid.Column="2" Background="{ThemeResource SurfaceAltBrush}" CornerRadius="11" Padding="10,7" VerticalAlignment="Center">
                             <Grid RowSpacing="6">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -381,6 +687,7 @@
         </Grid>
     </Grid>
 </Page>
+
 
 
 

@@ -2,10 +2,11 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 
-namespace OpenClawAdapter.ViewModels;
+namespace ClashForClaw.ViewModels;
 
 public sealed class SubscriptionItem : INotifyPropertyChanged
 {
@@ -63,8 +64,11 @@ public sealed class SubscriptionItem : INotifyPropertyChanged
         {
             if (SetField(ref isActive, value))
             {
+                OnPropertyChanged(nameof(StateLabel));
                 OnPropertyChanged(nameof(StateLineBrush));
                 OnPropertyChanged(nameof(StateLineOpacity));
+                OnPropertyChanged(nameof(StateBadgeBackgroundBrush));
+                OnPropertyChanged(nameof(StateBadgeForegroundBrush));
             }
         }
     }
@@ -76,6 +80,14 @@ public sealed class SubscriptionItem : INotifyPropertyChanged
 
     public string DisplayName => string.IsNullOrWhiteSpace(name) ? "未命名订阅" : name;
     public string DisplayUrl => string.IsNullOrWhiteSpace(url) ? "本地文件" : ShortenUrl(url);
+    public string SourceText => HasUrl ? "远端订阅" : "本地文件";
+    public string StateLabel => string.Equals(state, "error", StringComparison.OrdinalIgnoreCase)
+        ? "异常"
+        : IsActive
+            ? "当前"
+            : string.Equals(state, "unknown", StringComparison.OrdinalIgnoreCase)
+                ? "待检测"
+                : "已同步";
 
     public string UpdatedText
     {
@@ -132,6 +144,16 @@ public sealed class SubscriptionItem : INotifyPropertyChanged
     public double ProgressValue => usageLimit > 0 ? usageUsed : 0.15;
     public double ProgressMaximum => usageLimit > 0 ? usageLimit : 1;
     public double ProgressOpacity => usageLimit > 0 ? 1 : 0.3;
+    public Brush StateBadgeBackgroundBrush => string.Equals(state, "error", StringComparison.OrdinalIgnoreCase)
+        ? GetTranslucentBrush("StatusBadBrush", Colors.IndianRed, 0.16)
+        : IsActive
+            ? GetTranslucentBrush("AccentBlueBrush", Colors.CadetBlue, 0.18)
+            : GetBrush("SurfaceAltBrush");
+    public Brush StateBadgeForegroundBrush => string.Equals(state, "error", StringComparison.OrdinalIgnoreCase)
+        ? GetBrush("StatusBadBrush")
+        : IsActive
+            ? GetBrush("AccentBlueBrush")
+            : GetBrush("TextMutedBrush");
 
     public Brush StateLineBrush
     {
@@ -192,12 +214,16 @@ public sealed class SubscriptionItem : INotifyPropertyChanged
 
         OnPropertyChanged(nameof(DisplayName));
         OnPropertyChanged(nameof(DisplayUrl));
+        OnPropertyChanged(nameof(SourceText));
+        OnPropertyChanged(nameof(StateLabel));
         OnPropertyChanged(nameof(UpdatedText));
         OnPropertyChanged(nameof(UsageText));
         OnPropertyChanged(nameof(ExpireText));
         OnPropertyChanged(nameof(ProgressValue));
         OnPropertyChanged(nameof(ProgressMaximum));
         OnPropertyChanged(nameof(ProgressOpacity));
+        OnPropertyChanged(nameof(StateBadgeBackgroundBrush));
+        OnPropertyChanged(nameof(StateBadgeForegroundBrush));
         OnPropertyChanged(nameof(StateLineBrush));
         OnPropertyChanged(nameof(StateLineOpacity));
         OnPropertyChanged(nameof(HasUrl));
@@ -212,6 +238,15 @@ public sealed class SubscriptionItem : INotifyPropertyChanged
             return brush;
         }
         return new SolidColorBrush();
+    }
+
+    private static Brush GetTranslucentBrush(string key, Windows.UI.Color fallback, double opacity)
+    {
+        if (Application.Current?.Resources.TryGetValue(key, out var value) is true && value is SolidColorBrush solid)
+        {
+            return new SolidColorBrush(solid.Color) { Opacity = opacity };
+        }
+        return new SolidColorBrush(fallback) { Opacity = opacity };
     }
 
     private static string ShortenUrl(string raw)
@@ -256,3 +291,4 @@ public sealed class SubscriptionItem : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
+

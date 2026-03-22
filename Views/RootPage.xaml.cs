@@ -1,38 +1,43 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
-using OpenClawAdapter.ViewModels;
+using Microsoft.UI.Xaml.Navigation;
+using ClashForClaw.ViewModels;
 using WinRT.Interop;
 using Windows.Foundation;
 using Windows.Graphics;
+using Windows.UI;
 using Windows.UI.ViewManagement;
 
-namespace OpenClawAdapter.Views;
+namespace ClashForClaw.Views;
 
 public partial class RootPage : Page
 {
-    private const double DefaultWidthRatio = 0.3;
-    private const double DefaultHeightRatio = 0.3;
-    private const double MinWidthRatio = 0.1875;
-    private const double MinHeightRatio = 0.22;
+    private const double DefaultWidthRatio = 0.46;
+    private const double DefaultHeightRatio = 0.56;
+    private const double MinWidthRatio = 0.24;
+    private const double MinHeightRatio = 0.3;
     private const double NavCompactWidth = 72.0;
     private const double NavExpandedWidth = 186.0;
-    private const double NavTransitionStartWidth = 520.0;
-    private const double NavTransitionEndWidth = 980.0;
-    private const double NavRevealStartWidth = 96.0;
-    private const double NavRevealEndWidth = 156.0;
+    private const double NavExpandedBreakpointWidth = 860.0;
     private const double NavExpandedIconWidth = 34.0;
     private const double NavPaddingExpanded = 8.0;
     private const double NavContentInset = 20.0;
     private const double NavLabelGapExpanded = 10.0;
-    private static readonly TimeSpan JellyfishFrameInterval = TimeSpan.FromSeconds(1.0 / 120.0);
+    private const int GWLP_WNDPROC = -4;
+    private const uint WM_ENTERSIZEMOVE = 0x0231;
+    private const uint WM_EXITSIZEMOVE = 0x0232;
+    private static readonly TimeSpan JellyfishFrameInterval = TimeSpan.FromSeconds(1.0 / 48.0);
+    private static readonly TimeSpan InteractionRestoreDelay = TimeSpan.FromMilliseconds(180);
+    private static readonly TimeSpan NavigationSelectionAnimationInterval = TimeSpan.FromMilliseconds(40);
     private static readonly Type DefaultPageType = typeof(MainPage);
     private static readonly Dictionary<string, Type> NavigationPages = new(StringComparer.Ordinal)
     {
@@ -59,9 +64,21 @@ public partial class RootPage : Page
     private readonly Stopwatch renderClock = new();
     private TimeSpan lastRenderTime;
     private bool allowJellyfishMotion;
+    private bool isWindowInteractionActive;
+    private bool isWindowMoveSizeLoopActive;
     private CanvasControl? jellyfishCanvas;
     private MathJellyfishRenderer? jellyfishRenderer;
+    private DispatcherQueueTimer? interactionRestoreTimer;
+    private DispatcherQueueTimer? navigationSelectionAnimationTimer;
+    private IntPtr hookedWindowHandle;
+    private IntPtr originalWindowProc;
+    private WindowProc? windowProc;
+    private readonly Stopwatch navigationSelectionAnimationClock = new();
+    private NavigationSelectionAnimationTargets? navigationSelectionAnimationTargets;
+    private bool isNavigationSelectionAnimationRunning;
+    private ListViewItem[] navigationItems = Array.Empty<ListViewItem>();
     private readonly NavigationLayoutBinding[] navigationLayouts;
+    private readonly Dictionary<Type, ListViewItem> navigationItemsByPage;
     public MainViewModel ViewModel { get; } = AppState.ViewModel;
 
     public RootPage()
@@ -76,6 +93,24 @@ public partial class RootPage : Page
             new(NavGridLogs, NavIconColumnLogs, NavLabelColumnLogs, NavLabelLogs),
             new(NavGridGuide, NavIconColumnGuide, NavLabelColumnGuide, NavLabelGuide),
         ];
+        navigationItems =
+        [
+            NavItemDashboard,
+            NavItemSubscriptions,
+            NavItemSettings,
+            NavItemLogs,
+            NavItemGuide,
+        ];
+        navigationItemsByPage = new Dictionary<Type, ListViewItem>
+        {
+            [typeof(MainPage)] = NavItemDashboard,
+            [typeof(SubscriptionsPage)] = NavItemSubscriptions,
+            [typeof(SettingsPage)] = NavItemSettings,
+            [typeof(LogsPage)] = NavItemLogs,
+            [typeof(GuidePage)] = NavItemGuide,
+        };
+        ContentFrame.Navigated += OnContentFrameNavigated;
+        Unloaded += OnUnloaded;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -97,6 +132,7 @@ public partial class RootPage : Page
         }
 
         UpdateNavigationLayout();
+        ApplyNavigationSelectionVisuals(NavList.SelectedItem as ListViewItem);
     }
 
     private void ConfigureWindowChrome()
@@ -133,9 +169,11 @@ public partial class RootPage : Page
 
         window.SizeChanged += (_, _) =>
         {
+            EnterInteractionVisualMode();
             EnforceMinSize(appWindow);
             UpdateUiScale(appWindow);
             UpdateNavigationLayout();
+            ScheduleInteractionVisualRestore();
         };
         EnforceMinSize(appWindow);
         DispatcherQueue.TryEnqueue(() =>
@@ -160,32 +198,11 @@ public partial class RootPage : Page
 
     private void UpdateUiScale(AppWindow appWindow)
     {
-        var displayArea = DisplayArea.GetFromWindowId(appWindow.Id, DisplayAreaFallback.Primary);
-        if (displayArea.WorkArea.Width <= 0)
-        {
-            return;
-        }
-
-        var xamlRoot = XamlRoot;
-        if (xamlRoot is null)
-        {
-            return;
-        }
-
-        var raster = xamlRoot.RasterizationScale;
-        if (raster <= 0)
-        {
-            raster = 1;
-        }
-
-        var logicalWidth = displayArea.WorkArea.Width / raster;
-        var scale = logicalWidth / 1800.0;
-        scale = Math.Clamp(scale, 0.75, 1.0);
-
         if (RootScale is not null)
         {
-            RootScale.ScaleX = scale;
-            RootScale.ScaleY = scale;
+            // Keep the shell in layout space so window resizing does not "pull" the app around.
+            RootScale.ScaleX = 1;
+            RootScale.ScaleY = 1;
         }
     }
 
@@ -198,6 +215,7 @@ public partial class RootPage : Page
         }
 
         var hwnd = WindowNative.GetWindowHandle(window);
+        HookWindowInteractionMessages(hwnd);
         var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
         var appWindow = AppWindow.GetFromWindowId(windowId);
         UpdateUiScale(appWindow);
@@ -233,6 +251,7 @@ public partial class RootPage : Page
     {
         backgroundStoryboard = (Storyboard)Resources["FluidMotionStoryboard"];
         ConfigureJellyfishLayer();
+        EnsureInteractionRestoreTimer();
 
         if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
         {
@@ -254,27 +273,27 @@ public partial class RootPage : Page
     private void UpdateBackgroundMotion()
     {
         var highContrast = IsHighContrastEnabled();
-        var allowMotion = uiSettings.AnimationsEnabled && !highContrast;
-        var showLayer = !highContrast;
+        var allowMotion = uiSettings.AnimationsEnabled && !highContrast && !isWindowInteractionActive;
+        var showLayer = !highContrast && !isWindowInteractionActive;
         FluidCanvas.Visibility = showLayer ? Visibility.Visible : Visibility.Collapsed;
         JellyfishLayer.Visibility = showLayer ? Visibility.Visible : Visibility.Collapsed;
 
-        if (backgroundStoryboard is null)
+        if (backgroundStoryboard is not null)
         {
-            return;
+            if (allowMotion)
+            {
+                backgroundStoryboard.Begin();
+                StartJellyfish();
+            }
+            else
+            {
+                backgroundStoryboard.Stop();
+                StopJellyfish();
+                jellyfishCanvas?.Invalidate();
+            }
         }
 
-        if (allowMotion)
-        {
-            backgroundStoryboard.Begin();
-            StartJellyfish();
-        }
-        else
-        {
-            backgroundStoryboard.Stop();
-            StopJellyfish();
-            jellyfishCanvas?.Invalidate();
-        }
+        UpdateNavigationSelectionAnimationState();
     }
 
     private void ConfigureJellyfishLayer()
@@ -380,12 +399,37 @@ public partial class RootPage : Page
             return;
         }
 
+        ApplyNavigationSelectionVisuals(item);
         NavigateToNavigationItem(item);
+    }
+
+    private void OnContentFrameNavigated(object sender, NavigationEventArgs e)
+    {
+        if (e.SourcePageType is null)
+        {
+            return;
+        }
+
+        if (navigationItemsByPage.TryGetValue(e.SourcePageType, out var item)
+            && !ReferenceEquals(NavList.SelectedItem, item))
+        {
+            NavList.SelectedItem = item;
+        }
+
+        ApplyNavigationSelectionVisuals(item);
     }
 
     private void OnShellRootSizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateNavigationLayout();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        interactionRestoreTimer?.Stop();
+        StopNavigationSelectionAnimation();
+        UnhookWindowInteractionMessages();
+        StopJellyfish();
     }
 
     private void EnsureInitialNavigation()
@@ -420,6 +464,303 @@ public partial class RootPage : Page
         return NavigationPages.TryGetValue(tag, out var pageType) ? pageType : DefaultPageType;
     }
 
+    private void ApplyNavigationSelectionVisuals(ListViewItem? activeItem)
+    {
+        var mutedForeground = ResolveBrush("TextMutedBrush", Color.FromArgb(255, 148, 163, 184));
+        var selectedForeground = new SolidColorBrush(Colors.White);
+        var transparent = new SolidColorBrush(Colors.Transparent);
+
+        foreach (var item in navigationItems)
+        {
+            if (item is null || item.XamlRoot is null)
+            {
+                continue;
+            }
+
+            item.ApplyTemplate();
+            var isActive = ReferenceEquals(item, activeItem);
+            item.Background = transparent;
+            item.BorderBrush = transparent;
+            item.BorderThickness = new Thickness(0);
+            item.Foreground = isActive ? selectedForeground : mutedForeground;
+
+            var state = isActive ? "SelectedUnfocused" : "Unselected";
+            VisualStateManager.GoToState(item, state, true);
+            ApplySelectionChrome(item, isActive);
+        }
+
+        navigationSelectionAnimationTargets = activeItem is not null
+            ? ResolveNavigationSelectionAnimationTargets(activeItem)
+            : null;
+        if (navigationSelectionAnimationTargets is not null)
+        {
+            navigationSelectionAnimationClock.Restart();
+        }
+
+        UpdateNavigationSelectionAnimationState();
+    }
+
+    private static void ApplySelectionChrome(ListViewItem item, bool isActive)
+    {
+        SetTemplateOpacity(item, "SelectionLayer", isActive ? 1 : 0);
+        SetTemplateOpacity(item, "SelectionRailFlow", isActive ? 0.74 : 0);
+        if (!isActive)
+        {
+            SetTemplateOpacity(item, "SelectionAura", 0);
+            SetTemplateOpacity(item, "SelectionSheen", 0);
+        }
+    }
+
+    private static NavigationSelectionAnimationTargets? ResolveNavigationSelectionAnimationTargets(ListViewItem item)
+    {
+        if (FindNamedElement(item, "SelectionRailHost") is not FrameworkElement railHost
+            || FindNamedElement(item, "SelectionRailFlow") is not Border railFlow)
+        {
+            return null;
+        }
+
+        var railFlowTransform = railFlow.RenderTransform as CompositeTransform;
+        if (railFlowTransform is null)
+        {
+            railFlowTransform = new CompositeTransform();
+            railFlow.RenderTransform = railFlowTransform;
+        }
+
+        return new NavigationSelectionAnimationTargets(railHost, railFlow, railFlowTransform);
+    }
+
+    private void EnsureNavigationSelectionAnimationTimer()
+    {
+        if (navigationSelectionAnimationTimer is not null || DispatcherQueue is null)
+        {
+            return;
+        }
+
+        navigationSelectionAnimationTimer = DispatcherQueue.CreateTimer();
+        navigationSelectionAnimationTimer.Interval = NavigationSelectionAnimationInterval;
+        navigationSelectionAnimationTimer.IsRepeating = true;
+        navigationSelectionAnimationTimer.Tick += (_, _) => ApplyNavigationSelectionAnimationFrame();
+    }
+
+    private void UpdateNavigationSelectionAnimationState()
+    {
+        EnsureNavigationSelectionAnimationTimer();
+        if (navigationSelectionAnimationTargets is null)
+        {
+            StopNavigationSelectionAnimation();
+            return;
+        }
+
+        if (!uiSettings.AnimationsEnabled || IsHighContrastEnabled() || isWindowInteractionActive)
+        {
+            StopNavigationSelectionAnimation();
+            ApplyNavigationSelectionAnimationFrame(useStaticLayout: true);
+            return;
+        }
+
+        if (!isNavigationSelectionAnimationRunning)
+        {
+            navigationSelectionAnimationClock.Restart();
+            navigationSelectionAnimationTimer?.Start();
+            isNavigationSelectionAnimationRunning = true;
+        }
+
+        ApplyNavigationSelectionAnimationFrame();
+    }
+
+    private void StopNavigationSelectionAnimation()
+    {
+        navigationSelectionAnimationTimer?.Stop();
+        isNavigationSelectionAnimationRunning = false;
+        navigationSelectionAnimationClock.Stop();
+    }
+
+    private void ApplyNavigationSelectionAnimationFrame(bool useStaticLayout = false)
+    {
+        if (navigationSelectionAnimationTargets is null)
+        {
+            return;
+        }
+
+        var railHostWidth = navigationSelectionAnimationTargets.RailHost.ActualWidth;
+        var flowWidth = navigationSelectionAnimationTargets.RailFlow.ActualWidth > 0
+            ? navigationSelectionAnimationTargets.RailFlow.ActualWidth
+            : navigationSelectionAnimationTargets.RailFlow.Width;
+
+        if (railHostWidth <= 0 || flowWidth <= 0)
+        {
+            navigationSelectionAnimationTargets.RailFlow.Opacity = 0.72;
+            navigationSelectionAnimationTargets.RailFlowTransform.TranslateX = 0;
+            return;
+        }
+
+        var travel = Math.Max(0, railHostWidth - flowWidth);
+        if (useStaticLayout)
+        {
+            navigationSelectionAnimationTargets.RailFlow.Opacity = 0.72;
+            navigationSelectionAnimationTargets.RailFlowTransform.TranslateX = travel * 0.18;
+            return;
+        }
+
+        var time = navigationSelectionAnimationClock.Elapsed.TotalSeconds;
+        var phase = (time * 0.72) % 1.0;
+        navigationSelectionAnimationTargets.RailFlowTransform.TranslateX = travel * phase;
+        navigationSelectionAnimationTargets.RailFlow.Opacity = 0.64 + (0.2 * (0.5 + (0.5 * Math.Sin(time * 6.4))));
+    }
+
+    private static void SetTemplateOpacity(Control control, string childName, double opacity)
+    {
+        if (FindNamedElement(control, childName) is UIElement element)
+        {
+            element.Opacity = opacity;
+        }
+    }
+
+    private static FrameworkElement? FindNamedElement(DependencyObject root, string name)
+    {
+        if (root is FrameworkElement element && string.Equals(element.Name, name, StringComparison.Ordinal))
+        {
+            return element;
+        }
+
+        var childCount = VisualTreeHelper.GetChildrenCount(root);
+        for (var index = 0; index < childCount; index++)
+        {
+            var match = FindNamedElement(VisualTreeHelper.GetChild(root, index), name);
+            if (match is not null)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    private sealed class NavigationSelectionAnimationTargets(
+        FrameworkElement railHost,
+        Border railFlow,
+        CompositeTransform railFlowTransform)
+    {
+        public FrameworkElement RailHost { get; } = railHost;
+        public Border RailFlow { get; } = railFlow;
+        public CompositeTransform RailFlowTransform { get; } = railFlowTransform;
+    }
+
+    private void EnsureInteractionRestoreTimer()
+    {
+        if (interactionRestoreTimer is not null || DispatcherQueue is null)
+        {
+            return;
+        }
+
+        interactionRestoreTimer = DispatcherQueue.CreateTimer();
+        interactionRestoreTimer.Interval = InteractionRestoreDelay;
+        interactionRestoreTimer.Tick += (_, _) =>
+        {
+            interactionRestoreTimer?.Stop();
+            if (!isWindowInteractionActive || isWindowMoveSizeLoopActive)
+            {
+                return;
+            }
+
+            isWindowInteractionActive = false;
+            UpdateBackgroundMotion();
+        };
+    }
+
+    private void EnterInteractionVisualMode()
+    {
+        EnsureInteractionRestoreTimer();
+        interactionRestoreTimer?.Stop();
+        if (isWindowInteractionActive)
+        {
+            return;
+        }
+
+        isWindowInteractionActive = true;
+        UpdateBackgroundMotion();
+    }
+
+    private void ScheduleInteractionVisualRestore()
+    {
+        EnsureInteractionRestoreTimer();
+        interactionRestoreTimer?.Stop();
+        interactionRestoreTimer?.Start();
+    }
+
+    private void HookWindowInteractionMessages(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || hookedWindowHandle == hwnd)
+        {
+            return;
+        }
+
+        UnhookWindowInteractionMessages();
+        windowProc = WindowInteractionWndProc;
+        var procPointer = Marshal.GetFunctionPointerForDelegate(windowProc);
+        originalWindowProc = SetWindowLongPtrCompat(hwnd, GWLP_WNDPROC, procPointer);
+        hookedWindowHandle = hwnd;
+    }
+
+    private void UnhookWindowInteractionMessages()
+    {
+        if (hookedWindowHandle == IntPtr.Zero || originalWindowProc == IntPtr.Zero)
+        {
+            return;
+        }
+
+        SetWindowLongPtrCompat(hookedWindowHandle, GWLP_WNDPROC, originalWindowProc);
+        hookedWindowHandle = IntPtr.Zero;
+        originalWindowProc = IntPtr.Zero;
+        windowProc = null;
+    }
+
+    private IntPtr WindowInteractionWndProc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam)
+    {
+        switch (message)
+        {
+            case WM_ENTERSIZEMOVE:
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    isWindowMoveSizeLoopActive = true;
+                    EnterInteractionVisualMode();
+                });
+                break;
+            case WM_EXITSIZEMOVE:
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    isWindowMoveSizeLoopActive = false;
+                    ScheduleInteractionVisualRestore();
+                });
+                break;
+        }
+
+        return CallWindowProc(originalWindowProc, hwnd, message, wParam, lParam);
+    }
+
+    private static IntPtr SetWindowLongPtrCompat(IntPtr hwnd, int index, IntPtr newProc)
+    {
+        return IntPtr.Size == 8
+            ? SetWindowLongPtr(hwnd, index, newProc)
+            : new IntPtr(SetWindowLong(hwnd, index, newProc.ToInt32()));
+    }
+
+    private SolidColorBrush ResolveBrush(string resourceKey, Color fallback)
+    {
+        if (Resources.TryGetValue(resourceKey, out var localValue) && localValue is SolidColorBrush localBrush)
+        {
+            return new SolidColorBrush(localBrush.Color);
+        }
+
+        if (Application.Current?.Resources.TryGetValue(resourceKey, out var appValue) == true
+            && appValue is SolidColorBrush appBrush)
+        {
+            return new SolidColorBrush(appBrush.Color);
+        }
+
+        return new SolidColorBrush(fallback);
+    }
+
     private void UpdateNavigationLayout()
     {
         if (ShellRoot is null || NavColumn is null || NavList is null)
@@ -433,46 +774,24 @@ public partial class RootPage : Page
             return;
         }
 
-        var navProgress = SmoothStep(NavTransitionStartWidth, NavTransitionEndWidth, shellWidth);
-        var navWidth = Lerp(NavCompactWidth, NavExpandedWidth, navProgress);
+        var isExpanded = shellWidth >= NavExpandedBreakpointWidth;
+        var navWidth = isExpanded ? NavExpandedWidth : NavCompactWidth;
         NavColumn.Width = new GridLength(navWidth);
 
-        var listPadding = Lerp(0, NavPaddingExpanded, navProgress);
+        var listPadding = isExpanded ? NavPaddingExpanded : 0;
         NavList.Padding = new Thickness(listPadding, 10, listPadding, 8);
 
-        // Keep icon centering and label reveal on the same continuous curve so resize never "snaps".
         var contentWidth = Math.Max(32, navWidth - NavContentInset - (listPadding * 2));
-        var revealProgress = SmoothStep(NavRevealStartWidth, NavRevealEndWidth, navWidth);
-        var iconColumnWidth = Lerp(contentWidth, NavExpandedIconWidth, revealProgress);
-        var labelGap = Lerp(0, NavLabelGapExpanded, revealProgress);
+        var revealProgress = isExpanded ? 1.0 : 0.0;
+        var iconColumnWidth = isExpanded ? NavExpandedIconWidth : contentWidth;
+        var labelGap = isExpanded ? NavLabelGapExpanded : 0;
         var labelWidth = Math.Max(0, contentWidth - iconColumnWidth - labelGap);
-        var labelOffset = Lerp(0, NavLabelGapExpanded, revealProgress);
+        var labelOffset = isExpanded ? NavLabelGapExpanded : 0;
 
         foreach (var layout in navigationLayouts)
         {
             layout.Apply(contentWidth, iconColumnWidth, labelWidth, revealProgress, labelOffset);
         }
-    }
-
-    private static double Lerp(double start, double end, double progress)
-    {
-        return start + ((end - start) * progress);
-    }
-
-    private static double SmoothStep(double start, double end, double value)
-    {
-        if (value <= start)
-        {
-            return 0;
-        }
-
-        if (value >= end)
-        {
-            return 1;
-        }
-
-        var progress = (value - start) / (end - start);
-        return progress * progress * (3 - (2 * progress));
     }
 
     private sealed class NavigationLayoutBinding(
@@ -490,4 +809,16 @@ public partial class RootPage : Page
             label.Margin = new Thickness(labelOffset, 0, 0, 0);
         }
     }
+
+    private delegate IntPtr WindowProc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
+    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 }
+

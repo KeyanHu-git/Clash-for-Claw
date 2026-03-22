@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Text;
 
-namespace OpenClawAdapter.Services;
+namespace ClashForClaw.Services;
 
 public sealed class ProcessResult
 {

@@ -4,11 +4,11 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using OpenClawAdapter;
-using OpenClawAdapter.Services;
-using OpenClawAdapter.ViewModels;
+using ClashForClaw;
+using ClashForClaw.Services;
+using ClashForClaw.ViewModels;
 
-namespace OpenClawAdapter.Views;
+namespace ClashForClaw.Views;
 
 public partial class MainPage : Page
 {
@@ -48,7 +48,9 @@ public partial class MainPage : Page
 
         try
         {
-            await SyncStatusAsync(applyProbe: true);
+            await Task.WhenAll(
+                SyncStatusAsync(applyProbe: true),
+                SyncTrafficOverviewAsync());
         }
         catch (Exception ex)
         {
@@ -70,8 +72,10 @@ public partial class MainPage : Page
             var resp = await Api.ReloadAsync();
             ApplyProbe(resp.Probe);
             ViewModel.ReloadConfig();
-            await LoadConfigAsync();
-            await SyncStatusAsync(applyProbe: false);
+            await Task.WhenAll(
+                LoadConfigAsync(),
+                SyncStatusAsync(applyProbe: false),
+                SyncTrafficOverviewAsync());
         }
         catch (Exception ex)
         {
@@ -127,12 +131,16 @@ public partial class MainPage : Page
             return;
         }
 
+        var previousMode = ViewModel.IsSubscriptionMode;
+        var previousHint = ViewModel.ModeHint;
         isModeSwitching = true;
+        BeginModeSwitch(useSubscription: true);
         try
         {
             if (!await EnsureBackendReadyAsync("后台未启动。"))
             {
-                ViewModel.IsSubscriptionMode = false;
+                ViewModel.IsSubscriptionMode = previousMode;
+                ViewModel.ModeHint = previousHint;
                 return;
             }
 
@@ -140,24 +148,30 @@ public partial class MainPage : Page
             var target = PickSubscription(resp);
             if (target is null || string.IsNullOrWhiteSpace(target.Id))
             {
-                ViewModel.IsSubscriptionMode = false;
+                ViewModel.IsSubscriptionMode = previousMode;
+                ViewModel.ModeHint = previousHint;
                 ViewModel.ConnectionDetail = "没有可用订阅，无法切换。";
                 return;
             }
 
             await Api.ActivateSubscriptionAsync(target.Id);
-            var probe = await Api.ReloadAsync();
-            ApplyProbe(probe.Probe);
-            await LoadConfigAsync();
-            await SyncStatusAsync(applyProbe: false);
+            ViewModel.SubscriptionUrl = string.IsNullOrWhiteSpace(target.Url) ? string.Empty : target.Url;
+            ApplySubscriptionSnapshot(target);
+            ViewModel.ConnectionState = "已连接";
+            ViewModel.ConnectionStatusLevel = StatusLevel.Ok;
+            ViewModel.ConnectionDetail = "订阅模式已切换，正在同步状态...";
+            ViewModel.ModeHint = "订阅优先，失败自动回退本地端口。";
+            QueueDashboardRefresh(applyProbe: true);
         }
         catch (Exception ex)
         {
+            ViewModel.IsSubscriptionMode = previousMode;
+            ViewModel.ModeHint = previousHint;
             ViewModel.ConnectionDetail = $"切换失败：{ex.Message}";
         }
         finally
         {
-            isModeSwitching = false;
+            FinishModeSwitch();
         }
     }
 
@@ -168,12 +182,16 @@ public partial class MainPage : Page
             return;
         }
 
+        var previousMode = ViewModel.IsSubscriptionMode;
+        var previousHint = ViewModel.ModeHint;
         isModeSwitching = true;
+        BeginModeSwitch(useSubscription: false);
         if (!int.TryParse(ViewModel.LocalPort, out var port) || port <= 0)
         {
             ViewModel.ConnectionDetail = "本地端口无效。";
-            ViewModel.IsSubscriptionMode = true;
-            isModeSwitching = false;
+            ViewModel.IsSubscriptionMode = previousMode;
+            ViewModel.ModeHint = previousHint;
+            FinishModeSwitch();
             return;
         }
 
@@ -190,32 +208,42 @@ public partial class MainPage : Page
         {
             if (!await EnsureBackendReadyAsync("后台未启动。"))
             {
-                ViewModel.IsSubscriptionMode = true;
+                ViewModel.IsSubscriptionMode = previousMode;
+                ViewModel.ModeHint = previousHint;
                 return;
             }
 
             await Api.SetConfigAsync(payload);
             var resp = await Api.ReloadAsync();
-            ApplyProbe(resp.Probe);
-            await LoadConfigAsync();
-            await SyncStatusAsync(applyProbe: false);
+            ApplyProbe(resp.Probe, resp.Proxy);
+            ViewModel.ReloadConfig();
+            ViewModel.TrafficUsedGb = 0;
+            ViewModel.TrafficTotalGb = 0;
+            ViewModel.ConnectionState = "已连接";
+            ViewModel.ConnectionStatusLevel = StatusLevel.Ok;
+            ViewModel.ConnectionDetail = $"本地端口 {port} 已切换，正在同步状态...";
+            ViewModel.ModeHint = $"当前直连本地端口 {port}。";
+            QueueDashboardRefresh();
         }
         catch (Exception ex)
         {
+            ViewModel.IsSubscriptionMode = previousMode;
+            ViewModel.ModeHint = previousHint;
             ViewModel.ConnectionDetail = $"切换失败：{ex.Message}";
         }
         finally
         {
-            isModeSwitching = false;
+            FinishModeSwitch();
         }
     }
 
     private async Task SyncStatusAsync(bool applyProbe)
     {
         var status = await Api.GetStatusAsync();
+        ApplyPrimaryTraffic(status);
         if (applyProbe)
         {
-            ApplyProbe(status.Probe);
+            ApplyProbe(status.Probe, status.Proxy);
         }
 
         var enabled = status.SystemProxy?.Enabled ?? false;
@@ -225,6 +253,116 @@ public partial class MainPage : Page
             SystemProxySwitch.IsOn = enabled;
             isUpdatingSystemProxySwitch = false;
         }
+    }
+
+    private void ApplyPrimaryTraffic(AdapterStatusResponse status)
+    {
+        if (status.Billing is null)
+        {
+            ViewModel.TrafficUsedGb = 0;
+            ViewModel.TrafficTotalGb = 0;
+            return;
+        }
+
+        ViewModel.UpdateTrafficRates(status.Billing.Upload, status.Billing.Download, DateTimeOffset.Now);
+        if (status.Billing.Limit <= 0)
+        {
+            ViewModel.TrafficUsedGb = 0;
+            ViewModel.TrafficTotalGb = 0;
+            return;
+        }
+
+        ViewModel.TrafficUsedGb = status.Billing.Used;
+        ViewModel.TrafficTotalGb = status.Billing.Limit;
+        if (!string.IsNullOrWhiteSpace(status.Billing.UpdatedAt)
+            && DateTimeOffset.TryParse(status.Billing.UpdatedAt, out var updated))
+        {
+            ViewModel.SetTrafficUpdated(updated.ToLocalTime());
+        }
+        else
+        {
+            ViewModel.SetTrafficUpdated(DateTimeOffset.Now);
+        }
+    }
+
+    private async Task SyncTrafficOverviewAsync()
+    {
+        try
+        {
+            var resp = await Api.GetSubscriptionsAsync();
+            var target = PickSubscription(resp);
+            if (target is null || target.UsageLimit <= 0)
+            {
+                ViewModel.ClearSubscriptionTrafficSnapshot();
+                return;
+            }
+
+            ApplySubscriptionSnapshot(target);
+        }
+        catch
+        {
+        }
+    }
+
+    private void BeginModeSwitch(bool useSubscription)
+    {
+        ViewModel.IsModeSwitching = true;
+        ViewModel.IsSubscriptionMode = useSubscription;
+        ViewModel.ConnectionStatusLevel = StatusLevel.Warning;
+        ViewModel.ConnectionDetail = useSubscription
+            ? "正在切换到订阅模式..."
+            : $"正在切换到本地端口 {ViewModel.LocalPort}...";
+        ViewModel.ModeHint = useSubscription
+            ? "正在激活订阅。"
+            : "正在切换到本地端口并重载配置。";
+        UpdateModeButtons();
+    }
+
+    private void FinishModeSwitch()
+    {
+        isModeSwitching = false;
+        ViewModel.IsModeSwitching = false;
+        UpdateModeButtons();
+    }
+
+    private void QueueDashboardRefresh(bool applyProbe = false)
+    {
+        _ = RefreshDashboardAsync(applyProbe);
+    }
+
+    private async Task RefreshDashboardAsync(bool applyProbe)
+    {
+        try
+        {
+            await Task.WhenAll(
+                LoadConfigAsync(),
+                SyncStatusAsync(applyProbe),
+                SyncTrafficOverviewAsync());
+        }
+        catch
+        {
+        }
+    }
+
+    private void ApplySubscriptionSnapshot(AdapterSubscription subscription)
+    {
+        if (subscription.UsageLimit <= 0)
+        {
+            ViewModel.ClearSubscriptionTrafficSnapshot();
+            return;
+        }
+
+        DateTimeOffset? updatedAt = null;
+        if (subscription.UpdatedAt > 0)
+        {
+            updatedAt = DateTimeOffset.FromUnixTimeSeconds(subscription.UpdatedAt).ToLocalTime();
+        }
+
+        ViewModel.SetSubscriptionTrafficSnapshot(
+            subscription.UsageUsed,
+            subscription.UsageLimit,
+            subscription.UsageUnit,
+            updatedAt);
     }
 
     private async void OnSystemProxyToggled(object sender, RoutedEventArgs e)
@@ -298,8 +436,19 @@ public partial class MainPage : Page
         return null;
     }
 
-    private void ApplyProbe(AdapterProbe? probe)
+    private void ApplyProbe(AdapterProbe? probe, AdapterProxyStatus? proxy = null)
     {
+        if (string.Equals(proxy?.MihomoError, "mihomo_binary_not_found", StringComparison.OrdinalIgnoreCase))
+        {
+            ViewModel.LocalStatusLevel = StatusLevel.Warning;
+            ViewModel.LocalStatusText = "缺少 mihomo";
+            ViewModel.GatewayStatusLevel = StatusLevel.Unknown;
+            ViewModel.GatewayStatusText = "未检测";
+            ViewModel.InternetStatusLevel = StatusLevel.Unknown;
+            ViewModel.InternetStatusText = "未检测";
+            return;
+        }
+
         if (probe is null)
         {
             return;
@@ -457,3 +606,4 @@ public partial class MainPage : Page
         return false;
     }
 }
+

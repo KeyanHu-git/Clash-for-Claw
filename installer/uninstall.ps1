@@ -21,7 +21,9 @@ $installRoot = $PSScriptRoot
 $startMenuPath = Join-Path $env:APPDATA "Microsoft\\Windows\\Start Menu\\Programs\\$appName.lnk"
 $uninstallKey = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\ClashForClaw"
 
-Get-Process -Name "OpenClawAdapter" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+"ClashForClaw", "OpenClawAdapter" | ForEach-Object {
+    Get-Process -Name $_ -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+}
 
 if (Test-Path $startMenuPath) {
     Remove-Item $startMenuPath -Force -ErrorAction SilentlyContinue

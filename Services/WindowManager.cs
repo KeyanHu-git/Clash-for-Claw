@@ -1,9 +1,9 @@
-using Microsoft.UI;
+﻿using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using WinRT.Interop;
 
-namespace OpenClawAdapter.Services;
+namespace ClashForClaw.Services;
 
 public static class WindowManager
 {
@@ -47,3 +47,4 @@ public static class WindowManager
         return AppWindow.GetFromWindowId(windowId);
     }
 }
+

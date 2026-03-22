@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+﻿<?xml version="1.0" encoding="UTF-8" ?>
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
@@ -15,7 +15,12 @@
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
-        <RootNamespace>OpenClawAdapter</RootNamespace>
+        <RootNamespace>ClashForClaw</RootNamespace>
+        <AssemblyName>ClashForClaw</AssemblyName>
+        <PackageId>ClashForClaw</PackageId>
+        <AssemblyTitle>Clash for Claw</AssemblyTitle>
+        <Product>Clash for Claw</Product>
+        <Authors>KeyanHu</Authors>
 
         <!-- App Options -->
         <UseRidGraph>true</UseRidGraph>
@@ -40,13 +45,12 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Remove="OpenClawAdapter.slnx" />
+        <None Remove="ClashForClaw.slnx" />
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.*" />
         <PackageReference Include="Microsoft.Graphics.Win2D" Version="1.*" />
-        <PackageReference Include="Microsoft.Web.WebView2" Version="1.*" />
         <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.*" />
 
         <Manifest Include="$(ApplicationManifest)" />
@@ -69,9 +73,7 @@
     <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
         <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
     </PropertyGroup>
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
-  </ItemGroup>
 </Project>
+
 
 

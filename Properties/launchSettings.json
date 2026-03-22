@@ -1,9 +1,9 @@
 {
   "profiles": {
-    "OpenClawAdapter (Package)": {
+    "ClashForClaw (Package)": {
       "commandName": "MsixPackage"
     },
-    "OpenClawAdapter (Unpackaged)": {
+    "ClashForClaw (Unpackaged)": {
       "commandName": "Project"
     }
   }

@@ -14,10 +14,10 @@ using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
-using OpenClawAdapter.Services;
-using OpenClawAdapter.ViewModels;
+using ClashForClaw.Services;
+using ClashForClaw.ViewModels;
 
-namespace OpenClawAdapter.Views;
+namespace ClashForClaw.Views;
 
 public partial class SubscriptionsPage : Page, INotifyPropertyChanged
 {
@@ -30,8 +30,11 @@ public partial class SubscriptionsPage : Page, INotifyPropertyChanged
     private double lastItemWidth;
     private int lastColumns = -1;
     private string? activeSubscriptionId;
-    private const double SubscriptionItemHeight = 104;
+    private const double SubscriptionItemHeight = 132;
     private double subscriptionColumnWidth = 220;
+    private string statusMessage = string.Empty;
+    private InfoBarSeverity statusSeverity = InfoBarSeverity.Informational;
+    private bool isStatusOpen;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -44,6 +47,24 @@ public partial class SubscriptionsPage : Page, INotifyPropertyChanged
     {
         get => subscriptionColumnWidth;
         private set => SetField(ref subscriptionColumnWidth, value);
+    }
+
+    public string StatusMessage
+    {
+        get => statusMessage;
+        private set => SetField(ref statusMessage, value);
+    }
+
+    public InfoBarSeverity StatusSeverity
+    {
+        get => statusSeverity;
+        private set => SetField(ref statusSeverity, value);
+    }
+
+    public bool IsStatusOpen
+    {
+        get => isStatusOpen;
+        set => SetField(ref isStatusOpen, value);
     }
 
     public SubscriptionsPage()
@@ -590,8 +611,8 @@ public partial class SubscriptionsPage : Page, INotifyPropertyChanged
         }
 
         var requestedColumns = Math.Clamp(ViewModel.SubscriptionColumns, 1, 3);
-        var gap = 12.0;
-        var minWidth = 120.0;
+        var gap = 14.0;
+        var minWidth = 180.0;
         var columns = requestedColumns;
         var available = Math.Max(0, width - gap * (columns - 1));
 
@@ -768,10 +789,9 @@ public partial class SubscriptionsPage : Page, INotifyPropertyChanged
 
     private void SetStatus(string message, bool isError)
     {
-        StatusText.Text = isError ? LocalizeError(message) : message;
-        StatusText.Foreground = isError
-            ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["StatusBadBrush"]
-            : (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextMutedBrush"];
+        StatusMessage = isError ? LocalizeError(message) : message;
+        StatusSeverity = isError ? InfoBarSeverity.Error : InfoBarSeverity.Informational;
+        IsStatusOpen = !string.IsNullOrWhiteSpace(StatusMessage);
     }
 
     private static string LocalizeError(string message)
@@ -786,6 +806,7 @@ public partial class SubscriptionsPage : Page, INotifyPropertyChanged
             "bad_request" => "请求参数无效。",
             "unauthorized" => "未授权，请刷新后重试。",
             "forbidden" => "仅允许本机访问。",
+            "mihomo_binary_not_found" => "未找到 mihomo 运行时。程序会先尝试自动下载；如下载不可达，请手动放到应用目录或数据目录的 bin 中。",
             "subscription_url_required" => "订阅 URL 为空。",
             "subscription_not_found" => "订阅不存在。",
             "subscription_url_missing" => "订阅 URL 缺失。",
@@ -820,3 +841,4 @@ public partial class SubscriptionsPage : Page, INotifyPropertyChanged
 
     private sealed record SubscriptionInput(string Url, string Name);
 }
+

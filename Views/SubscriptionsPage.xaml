@@ -1,18 +1,17 @@
-﻿<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <Page
-    x:Class="OpenClawAdapter.Views.SubscriptionsPage"
+    x:Class="ClashForClaw.Views.SubscriptionsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:controls="using:OpenClawAdapter.Controls"
-    xmlns:local="using:OpenClawAdapter"
+    xmlns:controls="using:ClashForClaw.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Loaded="OnLoaded"
     mc:Ignorable="d">
     <Page.Resources>
         <Style x:Key="SubscriptionListItem" TargetType="GridViewItem">
             <Setter Property="Padding" Value="0" />
-            <Setter Property="Margin" Value="0,0,12,12" />
+            <Setter Property="Margin" Value="0,0,10,10" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="Background" Value="Transparent" />
@@ -24,63 +23,176 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="GridViewItem">
-                        <ContentPresenter
-                            Content="{TemplateBinding Content}"
-                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        <Grid>
+                            <Border x:Name="FocusLayer" CornerRadius="14" BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1" Opacity="0" IsHitTestVisible="False" />
+                            <ContentPresenter
+                                Content="{TemplateBinding Content}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="FocusStates">
+                                    <VisualState x:Name="Unfocused">
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="FocusLayer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.08" />
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="Focused">
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="FocusLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" />
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="PointerFocused">
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="FocusLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" />
+                                        </Storyboard>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Grid>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style x:Key="SubscriptionCard" TargetType="Border">
-            <Setter Property="CornerRadius" Value="10" />
+
+        <Style x:Key="SubscriptionCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Padding" Value="10,8" />
-            <Setter Property="Background" Value="{ThemeResource SurfaceBrush}" />
-            <Setter Property="BorderThickness" Value="0" />
         </Style>
     </Page.Resources>
 
-    <Grid x:Name="ContentLayout" Padding="5,3,5,5" RowSpacing="5">
+    <Grid x:Name="ContentLayout" Padding="{StaticResource PagePadding}" RowSpacing="8">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="920" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="ImportActionColumn2.Width" Value="*" />
+                        <Setter Target="ImportActionColumn3.Width" Value="*" />
+                        <Setter Target="ImportActionRow2.Height" Value="0" />
+                        <Setter Target="ImportActionRow3.Height" Value="0" />
+                        <Setter Target="DownloadButton.(Grid.Row)" Value="0" />
+                        <Setter Target="DownloadButton.(Grid.Column)" Value="0" />
+                        <Setter Target="DownloadButton.(Grid.ColumnSpan)" Value="1" />
+                        <Setter Target="RefreshAllButton.(Grid.Row)" Value="0" />
+                        <Setter Target="RefreshAllButton.(Grid.Column)" Value="1" />
+                        <Setter Target="RefreshAllButton.(Grid.ColumnSpan)" Value="1" />
+                        <Setter Target="ImportFileButton.(Grid.Row)" Value="0" />
+                        <Setter Target="ImportFileButton.(Grid.Column)" Value="2" />
+                        <Setter Target="ImportFileButton.(Grid.ColumnSpan)" Value="1" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Medium">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="600" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="ImportActionColumn2.Width" Value="*" />
+                        <Setter Target="ImportActionColumn3.Width" Value="0" />
+                        <Setter Target="ImportActionRow2.Height" Value="Auto" />
+                        <Setter Target="ImportActionRow3.Height" Value="0" />
+                        <Setter Target="DownloadButton.(Grid.Row)" Value="0" />
+                        <Setter Target="DownloadButton.(Grid.Column)" Value="0" />
+                        <Setter Target="DownloadButton.(Grid.ColumnSpan)" Value="1" />
+                        <Setter Target="RefreshAllButton.(Grid.Row)" Value="0" />
+                        <Setter Target="RefreshAllButton.(Grid.Column)" Value="1" />
+                        <Setter Target="RefreshAllButton.(Grid.ColumnSpan)" Value="1" />
+                        <Setter Target="ImportFileButton.(Grid.Row)" Value="1" />
+                        <Setter Target="ImportFileButton.(Grid.Column)" Value="0" />
+                        <Setter Target="ImportFileButton.(Grid.ColumnSpan)" Value="2" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="ImportActionColumn2.Width" Value="*" />
+                        <Setter Target="ImportActionColumn3.Width" Value="0" />
+                        <Setter Target="ImportActionRow2.Height" Value="Auto" />
+                        <Setter Target="ImportActionRow3.Height" Value="Auto" />
+                        <Setter Target="DownloadButton.(Grid.Row)" Value="0" />
+                        <Setter Target="DownloadButton.(Grid.Column)" Value="0" />
+                        <Setter Target="DownloadButton.(Grid.ColumnSpan)" Value="2" />
+                        <Setter Target="RefreshAllButton.(Grid.Row)" Value="1" />
+                        <Setter Target="RefreshAllButton.(Grid.Column)" Value="0" />
+                        <Setter Target="RefreshAllButton.(Grid.ColumnSpan)" Value="2" />
+                        <Setter Target="ImportFileButton.(Grid.Row)" Value="2" />
+                        <Setter Target="ImportFileButton.(Grid.Column)" Value="0" />
+                        <Setter Target="ImportFileButton.(Grid.ColumnSpan)" Value="2" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <TextBlock Style="{StaticResource TitleText}" Text="订阅" />
 
-        <Border Grid.Row="1" Background="{ThemeResource ToolbarBackgroundBrush}" CornerRadius="8" Padding="5">
-                <Grid ColumnSpacing="6">
+        <StackPanel Spacing="4">
+            <TextBlock Style="{StaticResource TitleText}" Text="订阅" />
+            <TextBlock Style="{StaticResource MutedText}" Text="集中管理远端订阅、本地导入与当前激活入口。" TextWrapping="WrapWholeWords" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource HeroCard}">
+            <StackPanel Spacing="8">
+                <StackPanel Spacing="4">
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="导入与更新" />
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="支持多行 URL 粘贴、批量下载、导入本地配置与一键刷新。" TextWrapping="WrapWholeWords" />
+                </StackPanel>
+
+                <TextBox
+                    x:Name="UrlInput"
+                    Style="{StaticResource InputTextBox}"
+                    PlaceholderText="粘贴一个或多个订阅 URL，每行一个。"
+                    AcceptsReturn="True"
+                    TextWrapping="Wrap"
+                    MinHeight="56"
+                    MaxHeight="160" />
+
+                <Grid x:Name="ImportActionGrid" ColumnSpacing="5" RowSpacing="5">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="ImportActionColumn2" Width="*" />
+                        <ColumnDefinition x:Name="ImportActionColumn3" Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBox
-                        x:Name="UrlInput"
-                        Style="{StaticResource InputTextBox}"
-                        PlaceholderText="URL 下载（支持多行粘贴）"
-                        AcceptsReturn="True"
-                        TextWrapping="Wrap"
-                        MinHeight="38"
-                        MaxHeight="140" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                        <Button
-                            Content="下载"
-                            Click="OnDownloadClicked"
-                            Style="{StaticResource SubtleButton}" />
-                        <Button
-                            Content="更新全部"
-                            Click="OnRefreshAllClicked"
-                            Style="{StaticResource SubtleButton}" />
-                        <Button
-                            Content="导入"
-                            Click="OnImportClicked"
-                            Style="{StaticResource SubtleButton}" />
-                    </StackPanel>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition x:Name="ImportActionRow2" Height="0" />
+                        <RowDefinition x:Name="ImportActionRow3" Height="0" />
+                    </Grid.RowDefinitions>
+
+                    <Button
+                        x:Name="DownloadButton"
+                        Content="下载订阅"
+                        Click="OnDownloadClicked"
+                        Style="{StaticResource PrimaryButton}" />
+                    <Button
+                        x:Name="RefreshAllButton"
+                        Grid.Column="1"
+                        Content="更新全部"
+                        Click="OnRefreshAllClicked"
+                        Style="{StaticResource OverviewSecondaryButton}" />
+                    <Button
+                        x:Name="ImportFileButton"
+                        Grid.Column="2"
+                        Content="导入文件"
+                        Click="OnImportClicked"
+                        Style="{StaticResource OverviewSecondaryButton}" />
                 </Grid>
+            </StackPanel>
         </Border>
 
-        <TextBlock x:Name="StatusText" Grid.Row="2" Style="{StaticResource StatusText}" Margin="0,2,0,0" TextWrapping="WrapWholeWords" />
+        <InfoBar
+            Grid.Row="2"
+            IsClosable="True"
+            IsOpen="{Binding IsStatusOpen, Mode=TwoWay}"
+            Message="{Binding StatusMessage}"
+            Severity="{Binding StatusSeverity}"
+            Title="订阅状态" />
 
         <GridView
             Grid.Row="3"
@@ -96,7 +208,7 @@
             SizeChanged="OnSubscriptionListSizeChanged">
             <GridView.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <ItemsWrapGrid x:Name="SubscriptionWrapGrid" Orientation="Horizontal" ItemWidth="{Binding SubscriptionColumnWidth}" ItemHeight="104" />
+                    <ItemsWrapGrid x:Name="SubscriptionWrapGrid" Orientation="Horizontal" ItemWidth="{Binding SubscriptionColumnWidth}" ItemHeight="116" />
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
             <GridView.ItemTemplate>
@@ -111,7 +223,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Grid Grid.Column="0" Margin="2,6,8,6" HorizontalAlignment="Center" VerticalAlignment="Stretch">
+                        <Grid Grid.Column="0" Margin="2,4,8,4" HorizontalAlignment="Center" VerticalAlignment="Stretch">
                             <Border
                                 Width="5"
                                 Background="{ThemeResource SubscriptionTrackBrush}"
@@ -143,54 +255,89 @@
                             </Border>
                         </Grid>
 
-                        <Border Grid.Column="1" Style="{StaticResource SubscriptionCard}">
-                            <Grid ColumnSpacing="8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Spacing="2">
-                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
-                                    <Grid ColumnSpacing="6">
+                        <Border Grid.Column="1" Style="{StaticResource SubscriptionCard}" Padding="0">
+                            <Grid RowSpacing="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Grid Padding="10,8,10,7" RowSpacing="6">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Spacing="3">
+                                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="{Binding SourceText}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Top">
+                                            <Border
+                                                Style="{StaticResource MetaBadge}"
+                                                Background="{Binding StateBadgeBackgroundBrush}"
+                                                Padding="5,2"
+                                                CornerRadius="7"
+                                                VerticalAlignment="Center">
+                                                <TextBlock FontSize="11.5" FontWeight="SemiBold" Foreground="{Binding StateBadgeForegroundBrush}" Text="{Binding StateLabel}" />
+                                            </Border>
+
+                                            <Button
+                                                Style="{StaticResource IconButton}"
+                                                Click="OnItemQuickRefresh"
+                                                IsEnabled="{Binding CanRefresh}">
+                                                <SymbolIcon Symbol="Refresh" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Grid.Row="1" ColumnSpacing="8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock
                                             Style="{StaticResource MutedText}"
-                                            Opacity="0.7"
+                                            FontSize="12"
                                             Text="{Binding DisplayUrl}"
                                             TextTrimming="CharacterEllipsis"
                                             MaxLines="1" />
                                         <TextBlock
                                             Grid.Column="1"
                                             Style="{StaticResource MutedText}"
-                                            Opacity="0.7"
+                                            FontSize="12"
                                             Text="{Binding UpdatedText}" />
                                     </Grid>
-                                    <TextBlock Style="{StaticResource MutedText}" Opacity="0.9">
-                                        <Run Text="{Binding UsageText}" />
-                                        <Run Text=" · " />
-                                        <Run Text="{Binding ExpireText}" />
-                                    </TextBlock>
-                                    <ProgressBar
-                                        Height="3"
-                                        Margin="0,5,0,0"
-                                        Maximum="{Binding ProgressMaximum}"
-                                        Minimum="0"
-                                        Value="{Binding ProgressValue}"
-                                        Opacity="{Binding ProgressOpacity}"
-                                        Foreground="{ThemeResource AccentBlueBrush}"
-                                        Background="{ThemeResource SubscriptionTrackBrush}" />
-                                </StackPanel>
-                                <Button
-                                    Grid.Column="1"
-                                    Style="{StaticResource IconButton}"
-                                    Click="OnItemQuickRefresh"
-                                    IsEnabled="{Binding CanRefresh}">
-                                    <SymbolIcon Symbol="Refresh" />
-                                </Button>
+
+                                    <Grid Grid.Row="2" ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding UsageText}" />
+                                        <TextBlock Grid.Column="1" Style="{StaticResource MutedText}" FontSize="12" Text="{Binding ExpireText}" />
+                                    </Grid>
+                                </Grid>
+
+                                <ProgressBar
+                                    Grid.Row="1"
+                                    Height="4"
+                                    Maximum="{Binding ProgressMaximum}"
+                                    Minimum="0"
+                                    Value="{Binding ProgressValue}"
+                                    Opacity="{Binding ProgressOpacity}"
+                                    Foreground="{ThemeResource AccentBlueBrush}"
+                                    Background="{ThemeResource SubscriptionTrackBrush}" />
                             </Grid>
+
                             <Border.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuFlyoutItem Text="刷新" Click="OnItemRefresh" CommandParameter="{Binding}" />

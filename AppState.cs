@@ -5,11 +5,11 @@ using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using OpenClawAdapter.Models;
-using OpenClawAdapter.Services;
-using OpenClawAdapter.ViewModels;
+using ClashForClaw.Models;
+using ClashForClaw.Services;
+using ClashForClaw.ViewModels;
 
-namespace OpenClawAdapter;
+namespace ClashForClaw;
 
 public static class AppState
 {
@@ -23,6 +23,8 @@ public static class AppState
     public static AdapterApiClient Api { get; } = new();
     public static TrayIconManager Tray { get; } = new();
     public static CliRunner CliRunner { get; } = new();
+    public static ServiceModeState ServiceMode { get; private set; } = new();
+    public static bool IsServiceModeEnabled => ServiceMode.IsEnabled;
     public static bool AllowClose { get; set; }
 
     public static void Initialize()
@@ -35,6 +37,7 @@ public static class AppState
         ViewModel = new MainViewModel(SettingsStore.Current);
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         SettingsStore.Changed += (_, _) => ApplySettings();
+        RefreshServiceModeState();
         ApplySettings();
         StartStatusPolling();
     }
@@ -51,7 +54,7 @@ public static class AppState
             // Fall through and attempt a local bootstrap below.
         }
 
-        if (SettingsStore.Current.ServiceModeEnabled)
+        if (IsServiceModeEnabled)
         {
             return false;
         }
@@ -102,9 +105,9 @@ public static class AppState
         ViewModel.ApplySettings(SettingsStore.Current);
         isApplyingSettings = false;
 
-        StartupManager.ApplyAutoStart(SettingsStore.Current);
+        StartupManager.ApplyAutoStart(SettingsStore.Current, IsServiceModeEnabled);
 
-        if (!SettingsStore.Current.ServiceModeEnabled)
+        if (!IsServiceModeEnabled)
         {
             CliRunner.EnsureRunning(SettingsStore.Current);
         }
@@ -115,7 +118,7 @@ public static class AppState
 
         ThemeManager.ApplyTheme(App.MainWindow, SettingsStore.Current.ThemeMode);
 
-        if (!SettingsStore.Current.ServiceModeEnabled)
+        if (!IsServiceModeEnabled)
         {
             Tray.Show();
         }
@@ -166,8 +169,20 @@ public static class AppState
 
     private static void ApplyStatus(AdapterStatusResponse resp)
     {
+        ApplyProxyHealth(resp);
+
         if (resp.Billing is null)
         {
+            ViewModel.TrafficUsedGb = 0;
+            ViewModel.TrafficTotalGb = 0;
+            return;
+        }
+
+        ViewModel.UpdateTrafficRates(resp.Billing.Upload, resp.Billing.Download, DateTimeOffset.Now);
+        if (resp.Billing.Limit <= 0)
+        {
+            ViewModel.TrafficUsedGb = 0;
+            ViewModel.TrafficTotalGb = 0;
             return;
         }
 
@@ -182,7 +197,59 @@ public static class AppState
         {
             ViewModel.SetTrafficUpdated(DateTimeOffset.Now);
         }
-        ViewModel.UpdateTrafficRates(resp.Billing.Upload, resp.Billing.Download, DateTimeOffset.Now);
+    }
+
+    private static void ApplyProxyHealth(AdapterStatusResponse resp)
+    {
+        var proxy = resp.Proxy;
+        if (proxy is null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(proxy.MihomoError) || proxy.Fallback)
+        {
+            ViewModel.ConnectionState = proxy.Fallback ? "已回退" : "异常";
+            ViewModel.ConnectionStatusLevel = StatusLevel.Warning;
+            ViewModel.ConnectionDetail = DescribeProxyIssue(proxy);
+
+            if (string.Equals(proxy.MihomoError, "mihomo_binary_not_found", StringComparison.OrdinalIgnoreCase))
+            {
+                ViewModel.LocalStatusLevel = StatusLevel.Warning;
+                ViewModel.LocalStatusText = "缺少 mihomo";
+            }
+            return;
+        }
+
+        if (string.Equals(proxy.Mode, "subscription_url", StringComparison.OrdinalIgnoreCase) && proxy.MihomoActive)
+        {
+            ViewModel.ConnectionState = resp.Ok ? "已连接" : "需关注";
+            ViewModel.ConnectionStatusLevel = resp.Ok ? StatusLevel.Ok : StatusLevel.Warning;
+            return;
+        }
+
+        if (string.Equals(proxy.EffectiveMode, "local_port", StringComparison.OrdinalIgnoreCase))
+        {
+            ViewModel.ConnectionState = "已连接";
+            ViewModel.ConnectionStatusLevel = StatusLevel.Ok;
+        }
+    }
+
+    private static string DescribeProxyIssue(AdapterProxyStatus proxy)
+    {
+        if (string.Equals(proxy.MihomoError, "mihomo_binary_not_found", StringComparison.OrdinalIgnoreCase))
+        {
+            return "未找到 mihomo 运行时。程序会优先尝试自动下载；如果当前网络无法访问 GitHub，请将 mihomo.exe 放到应用目录或数据目录的 bin 中后重试。";
+        }
+
+        if (proxy.Fallback)
+        {
+            return "订阅模式未能接管，当前已回退到本地端口。";
+        }
+
+        return string.IsNullOrWhiteSpace(proxy.MihomoError)
+            ? "本地代理运行异常。"
+            : proxy.MihomoError;
     }
 
     public static void ApplyAdapterConfig(AdapterConfig? cfg)
@@ -217,7 +284,7 @@ public static class AppState
 
     public static void InitializeTray(Window window)
     {
-        if (SettingsStore.Current.ServiceModeEnabled)
+        if (IsServiceModeEnabled)
         {
             return;
         }
@@ -291,31 +358,39 @@ public static class AppState
         {
             CliRunner.Stop();
             var enableResult = await Task.Run(() => ServiceModeManager.Enable(SettingsStore.Current));
+            RefreshServiceModeState();
+            ApplySettings();
+
+            if (!IsServiceModeEnabled)
+            {
+                var desktopFallbackStarted = CliRunner.EnsureRunning(SettingsStore.Current, force: true);
+                if (desktopFallbackStarted)
+                {
+                    enableResult = ServiceModeManager.WithDesktopFallback(enableResult);
+                }
+            }
+
             ApplyServiceModeResult(enableResult, true);
-
-            if (enableResult.ServiceStarted || enableResult.FallbackScheduled)
-            {
-                SettingsStore.Update(settings => settings.ServiceModeEnabled = true);
-            }
-            else
-            {
-                CliRunner.EnsureRunning(SettingsStore.Current);
-            }
-
             return enableResult;
         }
 
         var disableResult = await Task.Run(() => ServiceModeManager.Disable(SettingsStore.Current));
+        RefreshServiceModeState();
+        ApplySettings();
         ApplyServiceModeResult(disableResult, false);
 
-        if (string.Equals(disableResult.Title, "关闭服务模式失败", StringComparison.Ordinal))
+        if (disableResult.Failed)
         {
             return disableResult;
         }
-
-        SettingsStore.Update(settings => settings.ServiceModeEnabled = false);
-        CliRunner.EnsureRunning(SettingsStore.Current);
         return disableResult;
+    }
+
+    public static ServiceModeState RefreshServiceModeState()
+    {
+        ServiceMode = ServiceModeManager.Query(SettingsStore.Current);
+        ApplyServiceModeSelection(ServiceMode.IsEnabled);
+        return ServiceMode;
     }
 
     public static void ApplyServiceModeSelection(bool enabled)
@@ -331,7 +406,7 @@ public static class AppState
         ViewModel.IsServiceModeMessageOpen = true;
         ViewModel.ServiceModeSeverity = result.ServiceStarted
             ? InfoBarSeverity.Success
-            : result.FallbackScheduled
+            : result.FallbackScheduled || result.DesktopFallbackStarted
                 ? InfoBarSeverity.Warning
                 : enabled
                     ? InfoBarSeverity.Error
@@ -339,3 +414,4 @@ public static class AppState
     }
 
 }
+

@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using OpenClawAdapter.Services;
-using OpenClawAdapter.ViewModels;
+using ClashForClaw.Services;
+using ClashForClaw.ViewModels;
 
-namespace OpenClawAdapter.Views;
+namespace ClashForClaw.Views;
 
 public partial class SettingsPage : Page
 {
@@ -21,10 +21,13 @@ public partial class SettingsPage : Page
     {
         InitializeComponent();
         DataContext = ViewModel;
+        ApplyAdaptiveLayout();
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ApplyAdaptiveLayout();
+
         if (isLoaded)
         {
             return;
@@ -41,7 +44,7 @@ public partial class SettingsPage : Page
             isApplyingConfig = true;
             var resp = await Api.GetConfigAsync();
             AppState.ApplyAdapterConfig(resp.Config);
-            AppState.ApplyServiceModeSelection(SettingsStore.Current.ServiceModeEnabled);
+            AppState.RefreshServiceModeState();
         }
         catch (Exception ex)
         {
@@ -61,7 +64,7 @@ public partial class SettingsPage : Page
         }
 
         var targetState = toggle.IsOn;
-        if (targetState == SettingsStore.Current.ServiceModeEnabled)
+        if (targetState == AppState.IsServiceModeEnabled)
         {
             return;
         }
@@ -71,7 +74,7 @@ public partial class SettingsPage : Page
             var confirmed = await ConfirmEnableServiceModeAsync();
             if (!confirmed)
             {
-                SetServiceModeToggle(SettingsStore.Current.ServiceModeEnabled);
+                SetServiceModeToggle(AppState.IsServiceModeEnabled);
                 return;
             }
         }
@@ -80,7 +83,7 @@ public partial class SettingsPage : Page
         try
         {
             var result = await AppState.ChangeServiceModeAsync(targetState);
-            var actualState = SettingsStore.Current.ServiceModeEnabled;
+            var actualState = AppState.IsServiceModeEnabled;
             var succeeded = actualState == targetState;
 
             SetServiceModeToggle(actualState);
@@ -232,6 +235,11 @@ public partial class SettingsPage : Page
         await dialog.ShowAsync();
     }
 
+    private void OnPageSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        ApplyAdaptiveLayout(e.NewSize.Width);
+    }
+
     private void SetServiceModeToggle(bool enabled)
     {
         AppState.ApplyServiceModeSelection(enabled);
@@ -240,4 +248,130 @@ public partial class SettingsPage : Page
             ServiceModeSwitch.IsOn = enabled;
         }
     }
+
+    private void ApplyAdaptiveLayout(double? widthOverride = null)
+    {
+        var width = widthOverride ?? ActualWidth;
+        if (width >= 980)
+        {
+            ApplyWideLayout();
+            return;
+        }
+
+        if (width >= 720)
+        {
+            ApplyMediumLayout();
+            return;
+        }
+
+        ApplyNarrowLayout();
+    }
+
+    private void ApplyWideLayout()
+    {
+        ResidencyColumnB.Width = new GridLength(1, GridUnitType.Star);
+        DetailsColumnB.Width = new GridLength(1, GridUnitType.Star);
+        HeroMetricColumnB.Width = new GridLength(1, GridUnitType.Star);
+        HeroMetricColumnC.Width = new GridLength(1, GridUnitType.Star);
+        ServiceHeaderActionColumn.Width = GridLength.Auto;
+
+        Grid.SetColumn(HeroAccountMetric, 1);
+        Grid.SetRow(HeroAccountMetric, 0);
+        Grid.SetColumnSpan(HeroAccountMetric, 1);
+        Grid.SetColumn(HeroDataMetric, 2);
+        Grid.SetRow(HeroDataMetric, 0);
+        Grid.SetColumnSpan(HeroDataMetric, 1);
+
+        Grid.SetColumn(DesktopCard, 0);
+        Grid.SetRow(DesktopCard, 0);
+        Grid.SetColumnSpan(DesktopCard, 1);
+        Grid.SetColumn(ServiceCard, 1);
+        Grid.SetRow(ServiceCard, 0);
+        Grid.SetColumnSpan(ServiceCard, 1);
+
+        Grid.SetColumn(StrategyCard, 0);
+        Grid.SetRow(StrategyCard, 0);
+        Grid.SetColumnSpan(StrategyCard, 1);
+        Grid.SetColumn(AppearanceCard, 1);
+        Grid.SetRow(AppearanceCard, 0);
+        Grid.SetColumnSpan(AppearanceCard, 1);
+        Grid.SetColumn(CliCard, 0);
+        Grid.SetRow(CliCard, 1);
+        Grid.SetColumnSpan(CliCard, 1);
+        Grid.SetColumn(NetworkCard, 1);
+        Grid.SetRow(NetworkCard, 1);
+        Grid.SetColumnSpan(NetworkCard, 1);
+
+        Grid.SetColumn(ServiceModeSwitch, 1);
+        Grid.SetRow(ServiceModeSwitch, 0);
+        Grid.SetColumnSpan(ServiceModeSwitch, 1);
+    }
+
+    private void ApplyMediumLayout()
+    {
+        ResidencyColumnB.Width = new GridLength(0);
+        DetailsColumnB.Width = new GridLength(0);
+        HeroMetricColumnB.Width = new GridLength(1, GridUnitType.Star);
+        HeroMetricColumnC.Width = new GridLength(0);
+        ServiceHeaderActionColumn.Width = new GridLength(0);
+
+        Grid.SetColumn(HeroAccountMetric, 1);
+        Grid.SetRow(HeroAccountMetric, 0);
+        Grid.SetColumnSpan(HeroAccountMetric, 1);
+        Grid.SetColumn(HeroDataMetric, 0);
+        Grid.SetRow(HeroDataMetric, 1);
+        Grid.SetColumnSpan(HeroDataMetric, 2);
+
+        ApplyStackedSettingsCards();
+
+        Grid.SetColumn(ServiceModeSwitch, 0);
+        Grid.SetRow(ServiceModeSwitch, 1);
+        Grid.SetColumnSpan(ServiceModeSwitch, 2);
+    }
+
+    private void ApplyNarrowLayout()
+    {
+        ResidencyColumnB.Width = new GridLength(0);
+        DetailsColumnB.Width = new GridLength(0);
+        HeroMetricColumnB.Width = new GridLength(0);
+        HeroMetricColumnC.Width = new GridLength(0);
+        ServiceHeaderActionColumn.Width = new GridLength(0);
+
+        Grid.SetColumn(HeroAccountMetric, 0);
+        Grid.SetRow(HeroAccountMetric, 1);
+        Grid.SetColumnSpan(HeroAccountMetric, 1);
+        Grid.SetColumn(HeroDataMetric, 0);
+        Grid.SetRow(HeroDataMetric, 2);
+        Grid.SetColumnSpan(HeroDataMetric, 1);
+
+        ApplyStackedSettingsCards();
+
+        Grid.SetColumn(ServiceModeSwitch, 0);
+        Grid.SetRow(ServiceModeSwitch, 1);
+        Grid.SetColumnSpan(ServiceModeSwitch, 2);
+    }
+
+    private void ApplyStackedSettingsCards()
+    {
+        Grid.SetColumn(DesktopCard, 0);
+        Grid.SetRow(DesktopCard, 0);
+        Grid.SetColumnSpan(DesktopCard, 2);
+        Grid.SetColumn(ServiceCard, 0);
+        Grid.SetRow(ServiceCard, 1);
+        Grid.SetColumnSpan(ServiceCard, 2);
+
+        Grid.SetColumn(StrategyCard, 0);
+        Grid.SetRow(StrategyCard, 0);
+        Grid.SetColumnSpan(StrategyCard, 2);
+        Grid.SetColumn(AppearanceCard, 0);
+        Grid.SetRow(AppearanceCard, 1);
+        Grid.SetColumnSpan(AppearanceCard, 2);
+        Grid.SetColumn(CliCard, 0);
+        Grid.SetRow(CliCard, 2);
+        Grid.SetColumnSpan(CliCard, 2);
+        Grid.SetColumn(NetworkCard, 0);
+        Grid.SetRow(NetworkCard, 3);
+        Grid.SetColumnSpan(NetworkCard, 2);
+    }
 }
+

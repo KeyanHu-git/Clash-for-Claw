@@ -1,6 +1,6 @@
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 
-namespace OpenClawAdapter.Services;
+namespace ClashForClaw.Services;
 
 public static class ThemeManager
 {
@@ -19,3 +19,4 @@ public static class ThemeManager
         };
     }
 }
+
