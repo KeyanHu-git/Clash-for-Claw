@@ -3,8 +3,8 @@
 <div align="center">
   <img src="Assets/ClashForClaw-icon-preview.png" alt="Clash for Claw icon" width="88" />
 
-  <p><strong>面向 OpenClaw / Claw 链路的本地桌面控制端</strong></p>
-  <p>把代理入口、后台驻留和可视化配置收拢到一个更安静、更适合长期运行的 Windows 工具里。</p>
+  <p><strong>给 OpenClaw / Claw 准备的本地代理控制端</strong></p>
+  <p>下载一个安装包，填几项必要参数，就能把订阅入口、后台驻留和状态可视化收进一个 Windows 应用里。</p>
 
   <p>
     <a href="https://github.com/KeyanHu-git/Clash-for-Claw/releases">
@@ -22,55 +22,68 @@
   <img src="docs/readme-hero.png" alt="Clash for Claw overview" width="920" />
 </p>
 
-## 发布说明
+## 怎么下载
 
-- 发布只保留一个用户向安装包。
-- 默认产物为 self-contained Windows x64 版本，并优先打入仓库内置的 `mihomo.exe`。
-- `scripts/build-release-matrix.ps1` 现在只输出一套正式发布物。
-- 如果需要替换打包时使用的 `mihomo.exe`，仍然可以通过 `-MihomoPath` 显式注入。
+- 普通用户直接去 [Releases](https://github.com/KeyanHu-git/Clash-for-Claw/releases) 下载 `Clash-for-Claw-x.y.z-setup.exe`
+- 正式交付物就是安装版 `.exe`，不是让用户自己进文件夹找一堆可执行文件
+- 安装包默认已经带好桌面端、后台组件和 `mihomo.exe`
+- 安装完成后，启动 `Clash for Claw`，按下面几项配置即可开始用
 
-## 为什么做这个项目
+当前公开版本：[`v0.1.3`](https://github.com/KeyanHu-git/Clash-for-Claw/releases/tag/v0.1.3)
 
-这个项目来源于 Windows 环境下通过 Docker 使用 OpenClaw / Claw 的实际链路需求。  
-当宿主机缺少稳定、可控、可长期驻留的本地代理入口时，模型联网能力、订阅切换与日常使用体验都容易一起退化。
+## 第一次启动要配什么
 
-`Clash for Claw` 的目标不是去改变 OpenClaw 仓库本身，而是在它之外提供一个独立、稳定、可视化的本地代理控制层：
+第一次使用，通常只需要看 3 组参数：
 
-- 前台负责配置、状态确认和用户可见反馈
-- 后台负责静默运行、开机启动与服务化
-- 本地代理入口保持与 OpenClaw 仓库解耦，便于 OpenClaw 后续自由更新
+1. `网关地址`
+   OpenClaw / Claw 网关地址。  
+   如果网关就在本机，通常可先试 `http://127.0.0.1:18789`。
 
-## 核心特性
+2. `访问令牌`
+   用于访问网关的令牌。  
+   如果你的 OpenClaw 侧启用了鉴权，把对应 token 粘贴进来即可。
 
-- 围绕 OpenClaw / Claw 的真实联网链路设计，聚焦本地代理入口与关键状态可视化
-- 支持订阅模式与本地端口模式，界面内集中展示主要运行状态
-- 支持后台驻留、开机自启、静默启动与服务模式
-- 中文界面，敏感值不回显，配置与日志本地持久化
-- 正式发布包默认内置后端组件与 `mihomo.exe`，安装后即可直接进入完整流程
+3. `入口模式`
+   二选一即可：
+   - `订阅模式`：在“订阅”页粘贴订阅 URL，这是默认推荐方式
+   - `本地端口`：如果你本机已经有现成代理入口，就在“设置”里填本地端口，默认是 `7890`
 
-## 快速开始
+## 最短上手流程
 
-### 方式一：下载发布版本
+1. 安装并启动 `Clash for Claw`
+2. 在首页填好 `网关地址` 和 `访问令牌`
+3. 打开“订阅”页，粘贴订阅 URL
+4. 点击“下载订阅”，再切回订阅模式
+5. 首页看到“本地可用 / 网关可达 / 互联网可用”后，就说明链路已经通了
 
-1. 打开 [Releases](https://github.com/KeyanHu-git/Clash-for-Claw/releases) 下载最新版本。
-2. 下载安装包后，程序会部署桌面端、后台组件以及默认使用的 `mihomo.exe`。
-3. 启动 `Clash for Claw`，填写网关地址与令牌。
-4. 在“订阅”页添加订阅，或切换到本地端口模式。
-5. 验证联网正常后，再按需开启开机自启、静默启动或服务模式。
+## 订阅一般怎么买
 
-说明：
+一般不是在这个项目里买，而是去购买一个明确支持 `Clash` / `Mihomo` 订阅链接的代理服务。
 
-- 默认实现绑定 `127.0.0.1`，不会改写本机系统级全局代理。
-- 在 Docker Desktop 环境中，`host.docker.internal` 仍可能访问宿主机 loopback 端口，所以这不是“对容器完全不可见”的物理隔离，而是“对本机网络设置不侵入”的软件隔离。
-- 如果当前网络无法访问 GitHub，可手动将 `mihomo.exe` 放到应用目录下的 `bin` 中，或设置环境变量 `CLASH_FOR_CLAW_MIHOMO_DOWNLOAD_URL` / `CLASH_FOR_CLAW_MIHOMO_RELEASE_API_URL` 指向自定义源。
+购买前建议至少确认这几件事：
 
-### 方式二：从源码构建
+- 对方能提供可直接粘贴的 `Clash` / `Mihomo` 订阅 URL
+- 节点地区、流量额度、有效期是不是符合你的使用场景
+- 订阅更新是否稳定，售后和失效处理是否清楚
+- 支付方式、退款规则和风险说明是否透明
 
-环境要求：
+拿到订阅链接后，直接粘贴到“订阅”页即可，一行一个。
 
-- Windows 10 2004+ 或 Windows 11
-- .NET 10 SDK
-- WinUI 3 / Windows App SDK 开发环境
+## 这个软件默认帮你做了什么
+
+- 默认优先走订阅模式，失败时可回退到本地端口
+- 默认绑定 `127.0.0.1`，不会强行改写你整台机器的系统级全局代理
+- 支持后台驻留、开机自启、静默启动和服务模式
+- 配置、日志和状态都保存在本地，敏感值不回显
+
+补充说明：
+
+- 在 Docker Desktop 环境里，`host.docker.internal` 仍可能访问宿主机 loopback 端口，所以这不是“容器完全不可见”的物理隔离
+- 如果当前网络无法访问 GitHub，也可以手动把 `mihomo.exe` 放到应用目录下的 `bin` 中
+
+## 给开发者
+
+如果你是自己构建：
 
 ```powershell
 git clone https://github.com/KeyanHu-git/Clash-for-Claw.git
@@ -78,27 +91,17 @@ cd Clash-for-Claw
 dotnet build ClashForClaw.csproj -p:Platform=x64
 ```
 
-生成默认发布物：
+生成默认发布包：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-release-matrix.ps1 -Version 0.1.3 -MihomoPath C:\path\to\mihomo.exe
 ```
 
-单独构建安装包：
+单独生成安装版 `.exe`：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Version 0.1.3 -MihomoPath C:\path\to\mihomo.exe
 ```
-
-补充说明：
-
-- 订阅模式依赖独立的 `mihomo.exe` 运行时进程。
-- 本地调试时可将 `mihomo.exe` 放在 `backend/ClashForClaw.Service/bin/`，或设置环境变量 `CLASH_FOR_CLAW_MIHOMO_PATH`。
-- 如果需要自定义下载源，可设置 `CLASH_FOR_CLAW_MIHOMO_DOWNLOAD_URL` 或 `CLASH_FOR_CLAW_MIHOMO_RELEASE_API_URL`。
-
-## 发布
-
-- 当前公开版本：[v0.1.3](https://github.com/KeyanHu-git/Clash-for-Claw/releases/tag/v0.1.3)
 
 ## 协议
 
@@ -106,11 +109,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps
 
 ## 致谢
 
-- 数字生命背景动效参考：Shelter / MrIShelter，《一起赛博摸鱼吧——数学公式下的生命构型与动态》
+- 数字生命背景动效参考：Shelter / MrIShelter，《一起赛博摸鱼吧——数学公式下的生命构型与动态》  
   来源：[和鲸社区](https://www.heywhale.com/mw/project/687e3f38c678037e34ebf61e)
 
 ## 支持一下
 
-如果这个项目对你有帮助，欢迎给仓库点一个 Star：
+如果这个项目对你有帮助，欢迎点个 Star：
 
 - https://github.com/KeyanHu-git/Clash-for-Claw
