@@ -2,14 +2,12 @@
 
 ## Highlights
 
-- Refined packaging into `full` and `slim`, with `full` as the default GitHub-ready release profile.
-- Validated the adapter against a live OpenClaw environment without modifying the local OpenClaw repository or system proxy.
-- Tightened release hygiene by removing local diagnostics, temporary outputs, and one-off test artifacts from the tracked workspace.
-- Kept the desktop app and backend sidecar decoupled so OpenClaw repo updates remain independent.
+- Simplified release packaging to a single user-facing self-contained build.
+- Kept the bundled `mihomo.exe` path as the default release behavior so subscription mode works immediately after install.
+- Reworked the README screenshot pipeline to separate raw window capture from final presentation rendering.
+- Refined the README around the real end-user flow: download the installer `.exe`, fill the required parameters, then import a subscription.
 
 ## Files
 
-- `Clash-for-Claw-0.1.2-full-setup.exe`: recommended installer for most users
-- `Clash-for-Claw-0.1.2-full-portable-win-x64.zip`: portable package with bundled `mihomo`
-- `Clash-for-Claw-0.1.2-slim-setup.exe`: smaller installer that keeps runtime download behavior
-- `Clash-for-Claw-0.1.2-slim-portable-win-x64.zip`: smallest portable package
+- `Clash-for-Claw-0.1.2-setup.exe`: recommended installer
+- `Clash-for-Claw-0.1.2-portable-win-x64.zip`: portable package with bundled backend and `mihomo`

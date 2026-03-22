@@ -29,7 +29,7 @@
 - 安装包默认已经带好桌面端、后台组件和 `mihomo.exe`
 - 安装完成后，启动 `Clash for Claw`，按下面几项配置即可开始用
 
-当前公开版本：[`v0.1.3`](https://github.com/KeyanHu-git/Clash-for-Claw/releases/tag/v0.1.3)
+当前公开版本：[`v0.1.2`](https://github.com/KeyanHu-git/Clash-for-Claw/releases/tag/v0.1.2)
 
 ## 第一次启动要配什么
 
@@ -94,13 +94,13 @@ dotnet build ClashForClaw.csproj -p:Platform=x64
 生成默认发布包：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-release-matrix.ps1 -Version 0.1.3 -MihomoPath C:\path\to\mihomo.exe
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-release-matrix.ps1 -Version 0.1.2 -MihomoPath C:\path\to\mihomo.exe
 ```
 
 单独生成安装版 `.exe`：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Version 0.1.3 -MihomoPath C:\path\to\mihomo.exe
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Version 0.1.2 -MihomoPath C:\path\to\mihomo.exe
 ```
 
 ## 协议
