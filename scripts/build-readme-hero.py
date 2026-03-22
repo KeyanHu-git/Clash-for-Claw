@@ -1,11 +1,13 @@
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SOURCE = REPO_ROOT / "artifacts" / "readme-window-printwindow.png"
+SOURCE = REPO_ROOT / "artifacts" / "readme-window-raw.png"
 TARGET = REPO_ROOT / "docs" / "readme-hero.png"
+CANVAS_SIZE = (1680, 1080)
+WINDOW_RADIUS = 28
 
 
 def rounded_mask(size: tuple[int, int], radius: int, scale: int = 4) -> Image.Image:
@@ -16,53 +18,102 @@ def rounded_mask(size: tuple[int, int], radius: int, scale: int = 4) -> Image.Im
     return mask.resize(size, Image.Resampling.LANCZOS)
 
 
-def ellipse_glow(canvas_size: tuple[int, int], bbox: tuple[int, int, int, int], color: tuple[int, int, int, int], blur: int) -> Image.Image:
-    layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(layer)
-    draw.ellipse(bbox, fill=color)
-    return layer.filter(ImageFilter.GaussianBlur(blur))
+def gradient_background(size: tuple[int, int]) -> Image.Image:
+    width, height = size
+    base = Image.new("RGBA", size, "#f4f7fb")
+
+    top = Image.new("RGBA", size, (0, 0, 0, 0))
+    top_pixels = top.load()
+    for y in range(height):
+        ratio = y / max(height - 1, 1)
+        r = int(244 - (ratio * 18))
+        g = int(247 - (ratio * 14))
+        b = int(251 - (ratio * 10))
+        for x in range(width):
+            top_pixels[x, y] = (r, g, b, 255)
+
+    base = Image.alpha_composite(base, top)
+
+    for bbox, color, blur in [
+        ((-120, -40, 640, 520), (16, 24, 40, 32), 120),
+        ((1040, 40, 1760, 760), (24, 144, 255, 20), 140),
+        ((240, 700, 1340, 1260), (15, 23, 42, 16), 150),
+    ]:
+        layer = Image.new("RGBA", size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(layer)
+        draw.ellipse(bbox, fill=color)
+        base = Image.alpha_composite(base, layer.filter(ImageFilter.GaussianBlur(blur)))
+
+    vignette = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(vignette)
+    draw.ellipse((-200, -160, width + 200, height + 220), fill=220)
+    vignette = ImageChops.invert(vignette).filter(ImageFilter.GaussianBlur(100))
+    shade = Image.new("RGBA", size, (8, 12, 22, 34))
+    base = Image.composite(shade, base, vignette)
+    return base
+
+
+def layered_shadow(window_size: tuple[int, int], radius: int) -> Image.Image:
+    shadow_canvas = Image.new("RGBA", (window_size[0] + 220, window_size[1] + 220), (0, 0, 0, 0))
+
+    for offset, color, blur, spread in [
+        ((80, 96), (9, 15, 26, 44), 48, 46),
+        ((86, 104), (9, 15, 26, 26), 82, 78),
+        ((84, 136), (9, 15, 26, 14), 120, 132),
+    ]:
+        mask = rounded_mask((window_size[0] + spread, window_size[1] + spread), radius + (spread // 8))
+        layer = Image.new("RGBA", mask.size, color)
+        pasted = Image.new("RGBA", shadow_canvas.size, (0, 0, 0, 0))
+        pasted.paste(layer, offset, mask)
+        shadow_canvas = Image.alpha_composite(shadow_canvas, pasted.filter(ImageFilter.GaussianBlur(blur)))
+
+    return shadow_canvas
+
+
+def build_window_card(window: Image.Image) -> Image.Image:
+    mask = rounded_mask(window.size, WINDOW_RADIUS)
+    clipped = Image.new("RGBA", window.size, (0, 0, 0, 0))
+    clipped.paste(window, (0, 0), mask)
+
+    frame = Image.new("RGBA", window.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(frame)
+    draw.rounded_rectangle(
+        (0, 0, window.size[0] - 1, window.size[1] - 1),
+        radius=WINDOW_RADIUS,
+        outline=(255, 255, 255, 78),
+        width=1,
+    )
+
+    return Image.alpha_composite(clipped, frame)
 
 
 def main() -> None:
-    canvas_size = (1660, 1080)
-    canvas = Image.new("RGBA", canvas_size, "#fcfdff")
+    if not SOURCE.exists():
+        raise FileNotFoundError(f"raw capture not found: {SOURCE}")
 
-    # Light background atmosphere, kept subtle so the window stays primary.
-    for bbox, color, blur in [
-        ((-180, 600, 720, 1380), (39, 195, 245, 18), 100),
-        ((1080, -160, 1780, 520), (20, 184, 166, 16), 90),
-        ((420, 80, 1450, 910), (15, 23, 42, 8), 110),
-    ]:
-        canvas = Image.alpha_composite(canvas, ellipse_glow(canvas_size, bbox, color, blur))
-
+    canvas = gradient_background(CANVAS_SIZE)
     window = Image.open(SOURCE).convert("RGBA")
-    window_size = window.size
+    card = build_window_card(window)
 
-    # Keep the original capture size so the README cover does not distort the UI.
-    x = (canvas_size[0] - window_size[0]) // 2
-    y = 96
-    radius = 24
-    mask = rounded_mask(window_size, radius)
+    x = (CANVAS_SIZE[0] - window.size[0]) // 2
+    y = 108
 
-    shadow = Image.new("RGBA", (window_size[0] + 120, window_size[1] + 140), (0, 0, 0, 0))
-    shadow_mask = rounded_mask((window_size[0] + 24, window_size[1] + 24), radius + 10)
-    shadow_card = Image.new("RGBA", shadow_mask.size, (12, 18, 28, 52))
-    shadow.paste(shadow_card, (48, 40), shadow_mask)
-    shadow = shadow.filter(ImageFilter.GaussianBlur(28))
-    canvas.alpha_composite(shadow, (x - 56, y - 14))
+    shadow = layered_shadow(window.size, WINDOW_RADIUS)
+    canvas.alpha_composite(shadow, (x - 84, y - 70))
 
-    floor_shadow = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+    floor_shadow = Image.new("RGBA", CANVAS_SIZE, (0, 0, 0, 0))
     draw = ImageDraw.Draw(floor_shadow)
-    draw.ellipse((x + 120, y + window_size[1] - 8, x + window_size[0] - 120, y + window_size[1] + 92), fill=(15, 23, 42, 18))
-    floor_shadow = floor_shadow.filter(ImageFilter.GaussianBlur(32))
+    draw.ellipse(
+        (x + 120, y + window.size[1] - 10, x + window.size[0] - 120, y + window.size[1] + 104),
+        fill=(12, 18, 28, 22),
+    )
+    floor_shadow = floor_shadow.filter(ImageFilter.GaussianBlur(34))
     canvas = Image.alpha_composite(canvas, floor_shadow)
 
-    clipped_window = Image.new("RGBA", window_size, (0, 0, 0, 0))
-    clipped_window.paste(window, (0, 0), mask)
-    canvas.alpha_composite(clipped_window, (x, y))
+    canvas.alpha_composite(card, (x, y))
 
     TARGET.parent.mkdir(parents=True, exist_ok=True)
-    canvas.convert("RGB").save(TARGET, quality=95)
+    canvas.convert("RGB").save(TARGET, quality=96)
     print(f"saved {TARGET}")
 
 

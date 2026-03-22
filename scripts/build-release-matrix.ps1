@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.2",
+    [string]$Version = "0.1.3",
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
     [string]$Platform = "x64",
@@ -27,9 +27,12 @@ function Invoke-BuildInstaller {
         "-Configuration", $Configuration,
         "-Runtime", $Runtime,
         "-Platform", $Platform,
-        "-PublishModel", $PublishModel,
-        "-ArtifactSuffix", $ArtifactSuffix
+        "-PublishModel", $PublishModel
     )
+
+    if (-not [string]::IsNullOrWhiteSpace($ArtifactSuffix)) {
+        $args += @("-ArtifactSuffix", $ArtifactSuffix)
+    }
 
     if ($SkipBackend) {
         $args += "-SkipBackend"
@@ -47,5 +50,4 @@ function Invoke-BuildInstaller {
     }
 }
 
-Invoke-BuildInstaller -PublishModel "self-contained" -ArtifactSuffix "full" -ResolvedMihomoPath $MihomoPath
-Invoke-BuildInstaller -PublishModel "framework-dependent" -ArtifactSuffix "slim" -ResolvedMihomoPath "" -DisableBundledMihomo
+Invoke-BuildInstaller -PublishModel "self-contained" -ArtifactSuffix "" -ResolvedMihomoPath $MihomoPath
