@@ -3,8 +3,8 @@
 <div align="center">
   <img src="Assets/ClashForClaw-icon-preview.png" alt="Clash for Claw icon" width="88" />
 
-  <p><strong>给 OpenClaw / Claw 准备的本地代理控制端</strong></p>
-  <p>下载一个安装包，填几项必要参数，就能把订阅入口、后台驻留和状态可视化收进一个 Windows 应用里。</p>
+  <p><strong>面向 OpenClaw / Claw 链路的本地代理控制端</strong></p>
+  <p>将订阅入口、后台驻留和链路状态收拢到一个可直接交付的 Windows 安装程序中。</p>
 
   <p>
     <a href="https://github.com/KeyanHu-git/Clash-for-Claw/releases">
@@ -22,68 +22,82 @@
   <img src="docs/readme-hero.png" alt="Clash for Claw overview" width="920" />
 </p>
 
-## 怎么下载
+## 发布形式
 
-- 普通用户直接去 [Releases](https://github.com/KeyanHu-git/Clash-for-Claw/releases) 下载 `Clash-for-Claw-x.y.z-setup.exe`
-- 正式交付物就是安装版 `.exe`，不是让用户自己进文件夹找一堆可执行文件
-- 安装包默认已经带好桌面端、后台组件和 `mihomo.exe`
-- 安装完成后，启动 `Clash for Claw`，按下面几项配置即可开始用
+- 正式发布物为安装版 `Clash-for-Claw-x.y.z-setup.exe`
+- 安装包默认包含桌面端、后台组件与 `mihomo.exe`
+- `portable.zip` 仅保留给手动部署或调试场景
 
 当前公开版本：[`v0.1.2`](https://github.com/KeyanHu-git/Clash-for-Claw/releases/tag/v0.1.2)
 
-## 第一次启动要配什么
+## 为什么做这个事情
 
-第一次使用，通常只需要看 3 组参数：
+OpenClaw / Claw 在 Windows 环境中运行时，链路稳定性往往不取决于模型本身，而取决于宿主机是否具备一个长期可用、可观察、可维护的本地代理入口。
+
+如果这一层缺失，常见问题会混在一起出现：
+
+- 订阅入口与本地端口切换缺少统一控制
+- 后台驻留、开机启动和静默运行缺少稳定承载
+- 网关可达性、互联网连通性和流量状态缺少直观反馈
+
+`Clash for Claw` 的定位不是修改 OpenClaw 仓库本身，而是在其外部提供一层独立的本地控制面：
+
+- 前台负责配置、状态确认和可视化反馈
+- 后台负责静默运行、驻留和服务化
+- 代理入口与 OpenClaw 仓库保持解耦，便于后续独立更新
+
+## 首次配置
+
+首次启动通常只需要完成 3 组参数：
 
 1. `网关地址`
    OpenClaw / Claw 网关地址。  
-   如果网关就在本机，通常可先试 `http://127.0.0.1:18789`。
+   如果网关就在本机，通常可以先试 `http://127.0.0.1:18789`。
 
 2. `访问令牌`
-   用于访问网关的令牌。  
-   如果你的 OpenClaw 侧启用了鉴权，把对应 token 粘贴进来即可。
+   网关鉴权令牌。  
+   如果 OpenClaw 侧启用了鉴权，将对应 token 粘贴到此处即可。
 
 3. `入口模式`
    二选一即可：
    - `订阅模式`：在“订阅”页粘贴订阅 URL，这是默认推荐方式
-   - `本地端口`：如果你本机已经有现成代理入口，就在“设置”里填本地端口，默认是 `7890`
+   - `本地端口`：如果本机已经存在现成代理入口，可在“设置”页填写本地端口，默认是 `7890`
 
-## 最短上手流程
+## 快速接入
 
-1. 安装并启动 `Clash for Claw`
-2. 在首页填好 `网关地址` 和 `访问令牌`
-3. 打开“订阅”页，粘贴订阅 URL
-4. 点击“下载订阅”，再切回订阅模式
-5. 首页看到“本地可用 / 网关可达 / 互联网可用”后，就说明链路已经通了
+1. 下载并安装 `setup.exe`
+2. 启动 `Clash for Claw`
+3. 在首页填写 `网关地址` 和 `访问令牌`
+4. 打开“订阅”页，粘贴订阅 URL
+5. 点击“下载订阅”，再切回订阅模式
+6. 首页出现“本地可用 / 网关可达 / 互联网可用”后，即表示链路已经连通
 
-## 订阅一般怎么买
+## 订阅来源
 
-一般不是在这个项目里买，而是去购买一个明确支持 `Clash` / `Mihomo` 订阅链接的代理服务。
+本项目不提供订阅服务。接入订阅模式时，需要准备一条支持 `Clash` / `Mihomo` 的订阅 URL。
 
-购买前建议至少确认这几件事：
+获取订阅时，建议至少确认以下事项：
 
-- 对方能提供可直接粘贴的 `Clash` / `Mihomo` 订阅 URL
-- 节点地区、流量额度、有效期是不是符合你的使用场景
-- 订阅更新是否稳定，售后和失效处理是否清楚
-- 支付方式、退款规则和风险说明是否透明
+- 可提供直接导入的 `Clash` / `Mihomo` 订阅链接
+- 节点地区、流量额度、有效期与实际场景匹配
+- 订阅更新策略清晰且稳定
+- 支付方式、售后规则和风险说明透明
 
 拿到订阅链接后，直接粘贴到“订阅”页即可，一行一个。
 
-## 这个软件默认帮你做了什么
+## 运行边界
 
-- 默认优先走订阅模式，失败时可回退到本地端口
-- 默认绑定 `127.0.0.1`，不会强行改写你整台机器的系统级全局代理
+- 默认工作流围绕本地入口构建，不要求改写整机网络出口
+- 默认监听 `127.0.0.1`
 - 支持后台驻留、开机自启、静默启动和服务模式
-- 配置、日志和状态都保存在本地，敏感值不回显
+- 配置、日志与状态信息均保存在本地
 
 补充说明：
 
-- 在 Docker Desktop 环境里，`host.docker.internal` 仍可能访问宿主机 loopback 端口，所以这不是“容器完全不可见”的物理隔离
-- 如果当前网络无法访问 GitHub，也可以手动把 `mihomo.exe` 放到应用目录下的 `bin` 中
+- 在 Docker Desktop 环境中，`host.docker.internal` 仍可能访问宿主机 loopback 端口，因此这不是物理隔离
+- 如果当前网络无法访问 GitHub，也可以手动将 `mihomo.exe` 放到应用目录下的 `bin` 中
 
-## 给开发者
-
-如果你是自己构建：
+## 构建
 
 ```powershell
 git clone https://github.com/KeyanHu-git/Clash-for-Claw.git
@@ -112,8 +126,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps
 - 数字生命背景动效参考：Shelter / MrIShelter，《一起赛博摸鱼吧——数学公式下的生命构型与动态》  
   来源：[和鲸社区](https://www.heywhale.com/mw/project/687e3f38c678037e34ebf61e)
 
-## 支持一下
-
-如果这个项目对你有帮助，欢迎点个 Star：
+## 支持
 
 - https://github.com/KeyanHu-git/Clash-for-Claw

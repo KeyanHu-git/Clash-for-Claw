@@ -5,7 +5,8 @@
 - Simplified release packaging to a single user-facing self-contained build.
 - Kept the bundled `mihomo.exe` path as the default release behavior so subscription mode works immediately after install.
 - Reworked the README screenshot pipeline to separate raw window capture from final presentation rendering.
-- Refined the README around the real end-user flow: download the installer `.exe`, fill the required parameters, then import a subscription.
+- Refined the README around the real installation flow, configuration entry points, and subscription onboarding.
+- Reduced the README hero image treatment to a lighter, more restrained presentation with minimal shadow.
 
 ## Files
 
