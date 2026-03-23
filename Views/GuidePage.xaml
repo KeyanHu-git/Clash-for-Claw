@@ -18,21 +18,21 @@
         <Grid x:Name="GuideLayoutRoot">
             <StackPanel Padding="{StaticResource PagePadding}" Spacing="12">
                 <StackPanel Spacing="4">
-                    <TextBlock Style="{StaticResource TitleText}" Text="说明" />
+                    <TextBlock Style="{StaticResource TitleText}" Text="运行说明" />
                     <TextBlock
                         Style="{StaticResource MutedText}"
-                        Text="把运行逻辑、回退策略和接口边界集中说明，避免每次临时查找。"
+                        Text="说明当前工作方式、回退逻辑和本地接口范围。"
                         TextWrapping="WrapWholeWords" />
                 </StackPanel>
 
                 <Border Style="{StaticResource HeroCard}">
                     <StackPanel Spacing="8">
-                        <TextBlock Style="{StaticResource SectionTitle}" Text="默认工作方式" />
+                        <TextBlock Style="{StaticResource SectionTitle}" Text="默认边界" />
                         <Border Style="{StaticResource InsetPanel}">
                             <StackPanel Spacing="4">
-                                <TextBlock Text="仅回环使用，与本机流量隔离。" />
+                                <TextBlock Text="默认只处理本机代理入口，不接管其他网络接口。" />
                                 <TextBlock Text="系统代理默认关闭，可按需手动开启。" />
-                                <TextBlock Text="订阅展示仅反映代理链路本身的状态与流量。" />
+                                <TextBlock Text="订阅页显示的是代理链路状态，不代表整机流量。" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -55,15 +55,15 @@
                         <StackPanel Spacing="6">
                             <TextBlock Style="{StaticResource SectionTitle}" Text="核心原则" />
                             <TextBlock Style="{StaticResource MutedText}" Text="默认只做本机适配层，不扩展额外网络面。" TextWrapping="WrapWholeWords" />
-                            <TextBlock Text="订阅优先，保持入口简洁；不强制改系统级网络设置。" TextWrapping="WrapWholeWords" />
+                            <TextBlock Text="订阅优先，失败再回退本地端口；不强制改写系统网络设置。" TextWrapping="WrapWholeWords" />
                         </StackPanel>
                     </Border>
 
                     <Border x:Name="GuideModesCard" Grid.Row="1" Style="{StaticResource GuideCard}">
                         <StackPanel Spacing="6">
                             <TextBlock Style="{StaticResource SectionTitle}" Text="模式与回退" />
-                            <TextBlock Text="订阅模式默认；失败时自动回退本地端口。" TextWrapping="WrapWholeWords" />
-                            <TextBlock Text="订阅缺失时自动使用本地端口配置。" TextWrapping="WrapWholeWords" />
+                            <TextBlock Text="优先使用订阅模式；订阅不可用时才回退到本地端口。" TextWrapping="WrapWholeWords" />
+                            <TextBlock Text="本地端口模式仅使用当前填写的本地入口。" TextWrapping="WrapWholeWords" />
                         </StackPanel>
                     </Border>
 
@@ -71,25 +71,24 @@
                         <StackPanel Spacing="6">
                             <TextBlock Style="{StaticResource SectionTitle}" Text="接口与日志" />
                             <TextBlock Text="本地 API：/health /status /config /config/reload /service/*" TextWrapping="WrapWholeWords" />
-                            <TextBlock Text="URL 含 token 将自动解析，不会在输入框里回显。" TextWrapping="WrapWholeWords" />
-                            <TextBlock Text="日志仅保存在本机，不上传。" />
+                            <TextBlock Text="URL 中的 token 会自动解析，不会在输入框回显。" TextWrapping="WrapWholeWords" />
+                            <TextBlock Text="日志仅保存在本机。" />
                         </StackPanel>
                     </Border>
 
                     <Border x:Name="GuideServiceCard" Grid.Row="3" Style="{StaticResource GuideCard}">
                         <StackPanel Spacing="6">
-                            <TextBlock Style="{StaticResource SectionTitle}" Text="服务驻留" />
-                            <TextBlock Text="服务模式启用后 UI 与托盘不显示。" TextWrapping="WrapWholeWords" />
-                            <TextBlock Text="服务注册失败时会自动降级为计划任务。" TextWrapping="WrapWholeWords" />
+                            <TextBlock Style="{StaticResource SectionTitle}" Text="服务模式" />
+                            <TextBlock Text="启用后会尝试注册 Windows 服务并在后台运行。" TextWrapping="WrapWholeWords" />
+                            <TextBlock Text="若服务不可用，才会尝试计划任务回退；计划任务不是 Windows 服务。" TextWrapping="WrapWholeWords" />
                         </StackPanel>
                     </Border>
 
                     <Border x:Name="GuideCreditsCard" Grid.Row="4" Style="{StaticResource GuideCard}">
                         <StackPanel Spacing="6">
-                            <TextBlock Style="{StaticResource SectionTitle}" Text="动态背景致谢" />
-                            <TextBlock Text="本项目来源于和鲸社区，使用转载需要标注来源。" TextWrapping="WrapWholeWords" />
-                            <TextBlock Text="数学公式下的生命构型与动态（和鲸社区转载）" TextWrapping="WrapWholeWords" />
-                            <TextBlock Text="作者：Shelter / MrIShelter（2025/08/04）" />
+                            <TextBlock Style="{StaticResource SectionTitle}" Text="背景来源" />
+                            <TextBlock Text="动态背景素材来自和鲸社区，转载需标注来源。" TextWrapping="WrapWholeWords" />
+                            <TextBlock Text="作者：Shelter / MrIShelter，2025/08/04" TextWrapping="WrapWholeWords" />
                             <TextBlock Text="来源：https://www.heywhale.com/mw/project/687e3f38c678037e34ebf61e" TextWrapping="WrapWholeWords" />
                         </StackPanel>
                     </Border>

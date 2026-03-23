@@ -25,6 +25,7 @@ public static class AppState
     public static CliRunner CliRunner { get; } = new();
     public static ServiceModeState ServiceMode { get; private set; } = new();
     public static bool IsServiceModeEnabled => ServiceMode.IsEnabled;
+    public static bool IsWindowsServiceMode => ServiceMode.IsServiceMode;
     public static bool AllowClose { get; set; }
 
     public static void Initialize()
@@ -389,14 +390,15 @@ public static class AppState
     public static ServiceModeState RefreshServiceModeState()
     {
         ServiceMode = ServiceModeManager.Query(SettingsStore.Current);
-        ApplyServiceModeSelection(ServiceMode.IsEnabled);
+        ApplyServiceModeSelection(ServiceMode.IsServiceMode, ServiceMode.IsTaskFallback);
         return ServiceMode;
     }
 
-    public static void ApplyServiceModeSelection(bool enabled)
+    public static void ApplyServiceModeSelection(bool enabled, bool taskFallbackActive = false)
     {
         isApplyingSettings = true;
         ViewModel.ServiceModeEnabled = enabled;
+        ViewModel.ServiceTaskFallbackActive = taskFallbackActive;
         isApplyingSettings = false;
     }
 

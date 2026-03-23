@@ -7,10 +7,7 @@ namespace ClashForClaw.Services;
 
 public static class SettingsStore
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-    };
+    private const string BrokenSettingsSuffix = ".broken";
 
     public static AppSettings Current { get; private set; } = new();
 
@@ -21,25 +18,28 @@ public static class SettingsStore
     public static void Load()
     {
         AppPaths.PurgeLegacyData();
+        var loadedFromDisk = false;
 
         try
         {
             if (File.Exists(SettingsPath))
             {
                 var json = File.ReadAllText(SettingsPath);
-                var loaded = JsonSerializer.Deserialize<AppSettings>(json);
+                var loaded = JsonSerializer.Deserialize(json, AppJsonContext.Default.AppSettings);
                 if (loaded is not null)
                 {
                     Current = loaded;
+                    loadedFromDisk = true;
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
+            BackupBrokenSettings(ex);
             Current = new AppSettings();
         }
 
-        EnsureDefaults();
+        EnsureDefaults(loadedFromDisk);
         Save();
     }
 
@@ -50,8 +50,15 @@ public static class SettingsStore
         Changed?.Invoke(null, EventArgs.Empty);
     }
 
-    private static void EnsureDefaults()
+    private static void EnsureDefaults(bool loadedFromDisk)
     {
+        if (!loadedFromDisk)
+        {
+            var startupState = StartupManager.ReadAutoStartState();
+            Current.AutoStartEnabled = startupState.Enabled;
+            Current.SilentOnBootEnabled = startupState.Enabled && startupState.Silent;
+        }
+
         if (string.IsNullOrWhiteSpace(Current.CliPath))
         {
             Current.CliPath = string.Empty;
@@ -67,6 +74,8 @@ public static class SettingsStore
         {
             Current.CliArgs = "--daemon";
         }
+
+        Current.LogDirectory = AppPaths.NormalizeLogDirectorySetting(Current.LogDirectory);
 
         var resolved = AppPaths.ResolveCliPath(Current.CliPath);
         if (!File.Exists(resolved))
@@ -106,14 +115,71 @@ public static class SettingsStore
 
     private static void Save()
     {
-        var dir = Path.GetDirectoryName(SettingsPath);
-        if (!string.IsNullOrWhiteSpace(dir))
+        try
         {
-            Directory.CreateDirectory(dir);
-        }
+            var dir = Path.GetDirectoryName(SettingsPath);
+            if (!string.IsNullOrWhiteSpace(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
 
-        var json = JsonSerializer.Serialize(Current, JsonOptions);
-        File.WriteAllText(SettingsPath, json);
+            var json = JsonSerializer.Serialize(Current, AppJsonIndentedContext.Default.AppSettings);
+            var tempPath = SettingsPath + ".tmp";
+            File.WriteAllText(tempPath, json);
+
+            if (File.Exists(SettingsPath))
+            {
+                File.Replace(tempPath, SettingsPath, destinationBackupFileName: null);
+            }
+            else
+            {
+                File.Move(tempPath, SettingsPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogSettingsIssue("保存设置失败", ex);
+        }
+    }
+
+    private static void BackupBrokenSettings(Exception ex)
+    {
+        try
+        {
+            if (!File.Exists(SettingsPath))
+            {
+                LogSettingsIssue("读取设置失败", ex);
+                return;
+            }
+
+            var backupPath = SettingsPath + BrokenSettingsSuffix;
+            File.Copy(SettingsPath, backupPath, overwrite: true);
+            LogSettingsIssue($"读取设置失败，已备份到 {backupPath}", ex);
+        }
+        catch (Exception backupEx)
+        {
+            LogSettingsIssue("读取设置失败，且备份损坏设置文件时出错", backupEx);
+            LogSettingsIssue("原始设置读取异常", ex);
+        }
+    }
+
+    private static void LogSettingsIssue(string message, Exception ex)
+    {
+        try
+        {
+            var logPath = AppPaths.GetSettingsLogPath(Current.LogDirectory);
+            var directory = Path.GetDirectoryName(logPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            var entry = $"{DateTimeOffset.Now:u} {message}{Environment.NewLine}{ex}{Environment.NewLine}{Environment.NewLine}";
+            File.AppendAllText(logPath, entry);
+        }
+        catch
+        {
+            // Avoid crashing when diagnostics cannot be written.
+        }
     }
 }
 

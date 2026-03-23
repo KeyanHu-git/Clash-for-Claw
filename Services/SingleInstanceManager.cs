@@ -1,0 +1,75 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.UI.Xaml;
+
+namespace ClashForClaw.Services;
+
+public static class SingleInstanceManager
+{
+    private const string MutexName = @"Local\ClashForClaw.SingleInstance";
+    private const string ActivateEventName = @"Local\ClashForClaw.Activate";
+
+    private static Mutex? instanceMutex;
+    private static EventWaitHandle? activateEvent;
+    private static Task? activationTask;
+
+    public static bool TryAcquirePrimaryInstance()
+    {
+        if (instanceMutex is not null)
+        {
+            return true;
+        }
+
+        instanceMutex = new Mutex(initiallyOwned: true, MutexName, out var createdNew);
+        if (!createdNew)
+        {
+            instanceMutex.Dispose();
+            instanceMutex = null;
+            return false;
+        }
+
+        activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateEventName);
+        return true;
+    }
+
+    public static void SignalPrimaryInstance()
+    {
+        try
+        {
+            using var existingEvent = EventWaitHandle.OpenExisting(ActivateEventName);
+            existingEvent.Set();
+        }
+        catch
+        {
+            // The primary instance may still be starting up.
+        }
+    }
+
+    public static void StartActivationListener(Window window)
+    {
+        if (activateEvent is null || activationTask is not null)
+        {
+            return;
+        }
+
+        activationTask = Task.Run(() =>
+        {
+            while (true)
+            {
+                activateEvent.WaitOne();
+                window.DispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        WindowManager.Show(window);
+                    }
+                    catch
+                    {
+                        // A wake signal must never destabilize the primary instance.
+                    }
+                });
+            }
+        });
+    }
+}

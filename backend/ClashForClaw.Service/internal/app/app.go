@@ -24,7 +24,12 @@ func Run(args []string) int {
 		return code
 	}
 	if len(args) > 0 && args[0] == "service" {
-		paths, err := runtime.ResolvePaths(baseDir)
+		// Service commands sync user config into the service base before
+		// installing or starting the Windows service. Keep the user-side source
+		// anchored to the default per-user config directory instead of the
+		// service base override, otherwise ProgramData ends up syncing from
+		// itself and the desktop config is lost.
+		paths, err := runtime.ResolvePaths("")
 		if err != nil {
 			log.Printf("paths init failed: %v", err)
 			return 1

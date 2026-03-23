@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -21,6 +20,8 @@ public partial class SettingsPage : Page
     {
         InitializeComponent();
         DataContext = ViewModel;
+        ServiceModeSwitch.OnContent = "Windows 服务";
+        ServiceModeSwitch.OffContent = "桌面后台";
         ApplyAdaptiveLayout();
     }
 
@@ -64,7 +65,7 @@ public partial class SettingsPage : Page
         }
 
         var targetState = toggle.IsOn;
-        if (targetState == AppState.IsServiceModeEnabled)
+        if (targetState == AppState.IsWindowsServiceMode)
         {
             return;
         }
@@ -83,7 +84,7 @@ public partial class SettingsPage : Page
         try
         {
             var result = await AppState.ChangeServiceModeAsync(targetState);
-            var actualState = AppState.IsServiceModeEnabled;
+            var actualState = AppState.IsWindowsServiceMode;
             var succeeded = actualState == targetState;
 
             SetServiceModeToggle(actualState);
@@ -141,12 +142,12 @@ public partial class SettingsPage : Page
             return;
         }
 
-        var payload = new Dictionary<string, object>
+        var payload = new ProxyConfigUpdateRequest
         {
-            ["proxy"] = new Dictionary<string, object>
+            Proxy = new ProxyConfigPatch
             {
-                ["subscription_refresh_hours"] = refresh,
-                ["subscription_probe_minutes"] = probe,
+                SubscriptionRefreshHours = refresh,
+                SubscriptionProbeMinutes = probe,
             },
         };
 
@@ -173,11 +174,11 @@ public partial class SettingsPage : Page
             return;
         }
 
-        var payload = new Dictionary<string, object>
+        var payload = new ProxyConfigUpdateRequest
         {
-            ["proxy"] = new Dictionary<string, object>
+            Proxy = new ProxyConfigPatch
             {
-                ["local_port"] = port,
+                LocalPort = port,
             },
         };
 
@@ -206,11 +207,11 @@ public partial class SettingsPage : Page
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "切换到完全静默后台？",
-            PrimaryButtonText = "立即切换",
+            Title = "切换到 Windows 服务模式？",
+            PrimaryButtonText = "立即注册",
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Primary,
-            Content = "启用后会注册后台服务，当前主窗口与托盘将退出。之后后台仍会继续运行，界面只在你手动打开时出现。",
+            Content = "启用后会尝试注册 Windows 服务。只有注册成功后前台才会退出；如果回退为计划任务，会保留界面并提示原因。",
         };
 
         var result = await dialog.ShowAsync();

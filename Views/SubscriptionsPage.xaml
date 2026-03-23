@@ -134,20 +134,20 @@
 
         <StackPanel Spacing="4">
             <TextBlock Style="{StaticResource TitleText}" Text="订阅" />
-            <TextBlock Style="{StaticResource MutedText}" Text="集中管理远端订阅、本地导入与当前激活入口。" TextWrapping="WrapWholeWords" />
+            <TextBlock Style="{StaticResource MutedText}" Text="管理订阅源、导入文件和当前生效项。" TextWrapping="WrapWholeWords" />
         </StackPanel>
 
         <Border Grid.Row="1" Style="{StaticResource HeroCard}">
             <StackPanel Spacing="8">
                 <StackPanel Spacing="4">
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="导入与更新" />
-                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="支持多行 URL 粘贴、批量下载、导入本地配置与一键刷新。" TextWrapping="WrapWholeWords" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="添加与更新" />
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="输入 URL、导入本地文件，或刷新全部订阅。" TextWrapping="WrapWholeWords" />
                 </StackPanel>
 
                 <TextBox
                     x:Name="UrlInput"
                     Style="{StaticResource InputTextBox}"
-                    PlaceholderText="粘贴一个或多个订阅 URL，每行一个。"
+                    PlaceholderText="输入订阅 URL，每行一条"
                     AcceptsReturn="True"
                     TextWrapping="Wrap"
                     MinHeight="56"
@@ -167,19 +167,19 @@
 
                     <Button
                         x:Name="DownloadButton"
-                        Content="下载订阅"
+                        Content="导入 URL"
                         Click="OnDownloadClicked"
                         Style="{StaticResource PrimaryButton}" />
                     <Button
                         x:Name="RefreshAllButton"
                         Grid.Column="1"
-                        Content="更新全部"
+                        Content="刷新全部订阅"
                         Click="OnRefreshAllClicked"
                         Style="{StaticResource OverviewSecondaryButton}" />
                     <Button
                         x:Name="ImportFileButton"
                         Grid.Column="2"
-                        Content="导入文件"
+                        Content="导入本地文件"
                         Click="OnImportClicked"
                         Style="{StaticResource OverviewSecondaryButton}" />
                 </Grid>

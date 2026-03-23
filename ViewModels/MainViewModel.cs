@@ -26,7 +26,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string subscriptionUrl = string.Empty;
     private string localPort = "7890";
     private bool isSubscriptionMode = true;
-    private string modeHint = "订阅优先，失败自动回退本地端口。";
+    private string modeHint = "订阅优先，失败回退本地端口。";
     private int subscriptionRefreshHours = 6;
     private int subscriptionProbeMinutes = 60;
     private int subscriptionColumns = 2;
@@ -61,9 +61,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool silentOnBootEnabled;
     private bool closeToTrayEnabled = true;
     private bool serviceModeEnabled;
+    private bool serviceTaskFallbackActive;
     private bool autoRunCliEnabled = true;
     private string cliPath = string.Empty;
     private string cliArgs = "--daemon";
+    private string logDirectory = AppPaths.DefaultDesktopLogDirectory;
     private bool debugLoggingEnabled;
     private string themeMode = "Dark";
     private string serviceModeMessage = string.Empty;
@@ -92,6 +94,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             ? string.Empty
             : settings.CliPath;
         CliArgs = settings.CliArgs is null ? string.Empty : settings.CliArgs;
+        LogDirectoryPath = AppPaths.ResolveDesktopLogDirectory(settings.LogDirectory);
         DebugLoggingEnabled = settings.DebugLoggingEnabled;
         ThemeMode = string.IsNullOrWhiteSpace(settings.ThemeMode)
             ? "Dark"
@@ -346,17 +349,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public double TrafficUsageValue => EffectiveTrafficTotal > 0 ? Math.Max(0, EffectiveTrafficUsed) : 0;
     public double TrafficUsageMaximum => EffectiveTrafficTotal > 0 ? EffectiveTrafficTotal : 1;
     public string TrafficUsagePercentText => EffectiveTrafficTotal > 0
-        ? $"{Math.Min(100, EffectiveTrafficUsed / EffectiveTrafficTotal * 100):0}% 已使用"
-        : "等待同步订阅用量";
+        ? $"已用 {Math.Min(100, EffectiveTrafficUsed / EffectiveTrafficTotal * 100):0}%"
+        : "等待同步";
     public string TrafficRemainingText => EffectiveTrafficTotal > 0
         ? $"剩余 {Math.Max(0, EffectiveTrafficTotal - EffectiveTrafficUsed):0.0} {EffectiveTrafficUnit}"
         : "总量未知";
 
     public string ShellResidencyText => ServiceModeEnabled
-        ? "单机回环 · 完全静默后台"
-        : "单机回环 · 桌面后台";
+        ? "Windows 服务"
+        : ServiceTaskFallbackActive
+            ? "计划任务回退"
+            : "桌面后台";
 
-    public string ConnectivitySummary => $"本地 {LocalStatusText} · 网关 {GatewayStatusText} · 互联网 {InternetStatusText}";
+    public string ConnectivitySummary => $"本地 {LocalStatusText} / 网关 {GatewayStatusText} / 外网 {InternetStatusText}";
 
     public string TrafficUpRateText
     {
@@ -378,21 +383,57 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ? "未重载"
         : $"{lastReloadAt:yyyy-MM-dd HH:mm}";
 
-    public string LogFilePath => AppPaths.ServiceLogPath;
+    public string LogDirectoryPath
+    {
+        get => logDirectory;
+        private set
+        {
+            if (SetField(ref logDirectory, value))
+            {
+                RaiseLogLocationChanged();
+            }
+        }
+    }
 
-    public bool DesktopResidencyOptionsEnabled => !ServiceModeEnabled;
+    public string DesktopLogFilePath => AppPaths.GetDesktopServiceLogPath(logDirectory);
+
+    public string SettingsLogPath => AppPaths.GetSettingsLogPath(logDirectory);
+
+    public string CrashLogPath => AppPaths.GetCrashLogPath(logDirectory);
+
+    public string ServiceLogDirectory => AppPaths.DefaultServiceLogDirectory;
+
+    public string ServiceLogPath => AppPaths.ServiceLogPath;
+
+    public string ActiveLogDirectory => ServiceModeEnabled ? ServiceLogDirectory : LogDirectoryPath;
+
+    public string ActiveLogFilePath => ServiceModeEnabled ? ServiceLogPath : DesktopLogFilePath;
+
+    public bool IsCustomLogDirectory => !AppPaths.IsDefaultDesktopLogDirectory(logDirectory);
+
+    public string LogLocationHint => ServiceModeEnabled
+        ? "Windows 服务模式固定写入服务目录；上方目录用于桌面模式日志。"
+        : "桌面前台日志、崩溃记录和本地后台日志都会写入该目录。";
+
+    public bool DesktopResidencyOptionsEnabled => !ServiceModeEnabled && !ServiceTaskFallbackActive;
 
     public string DesktopResidencySummary => ServiceModeEnabled
-        ? "服务模式已接管后台驻留，下面这些桌面行为已暂时失效。"
-        : "日常推荐使用桌面后台：开机自启、静默启动、关闭最小化到托盘。";
+        ? "当前由 Windows 服务接管。"
+        : ServiceTaskFallbackActive
+            ? "当前由计划任务接管，不是 Windows 服务。"
+            : "当前由桌面后台常驻。";
 
     public string BackgroundProfileTitle => ServiceModeEnabled
-        ? "完全静默后台"
-        : "桌面后台";
+        ? "Windows 服务模式"
+        : ServiceTaskFallbackActive
+            ? "计划任务回退"
+            : "桌面后台";
 
     public string BackgroundProfileDetail => ServiceModeEnabled
-        ? "当前将由 Windows 后台服务接管，启用后会关闭主窗口与托盘。"
-        : "当前由桌面进程常驻，适合日常可视化管理与快速排障。";
+        ? "已注册为 Windows 服务，前台仅用于配置。"
+        : ServiceTaskFallbackActive
+            ? "未注册为 Windows 服务，当前由计划任务保持后台运行。"
+            : "当前由桌面进程常驻，可保留托盘与界面。";
 
     public bool IsModeSwitching
     {
@@ -416,10 +457,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
             : $"正在切换到本地端口 {LocalPort}...";
 
     public string ServiceModeHint => ServiceModeEnabled
-        ? "当前已切换到服务模式。手动打开界面时，这个前台窗口只负责配置，不参与常驻。"
-        : "需要完全无界面、无托盘时再启用服务模式；启用后会尝试注册 Windows 服务，失败时自动回退计划任务。";
+        ? "当前为 Windows 服务模式，界面只用于配置。"
+        : ServiceTaskFallbackActive
+            ? "当前为计划任务回退，不是 Windows 服务；如需注册服务，请以管理员权限重新启用。"
+            : "启用后会尝试注册 Windows 服务。";
 
-    public string ServiceModeAccountText => "LocalService（低权限）";
+    public string ServiceModeAccountText => ServiceModeEnabled
+        ? "LocalService（Windows 服务）"
+        : ServiceTaskFallbackActive
+            ? "当前用户（计划任务）"
+            : "当前用户（桌面后台）";
 
     public string ServiceModeDataPath => AppPaths.ServiceBaseDirectory;
 
@@ -448,12 +495,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             if (SetField(ref serviceModeEnabled, value))
             {
-                OnPropertyChanged(nameof(DesktopResidencyOptionsEnabled));
-                OnPropertyChanged(nameof(DesktopResidencySummary));
-                OnPropertyChanged(nameof(BackgroundProfileTitle));
-                OnPropertyChanged(nameof(BackgroundProfileDetail));
-                OnPropertyChanged(nameof(ServiceModeHint));
-                OnPropertyChanged(nameof(ShellResidencyText));
+                RaiseBackgroundModeChanged();
+            }
+        }
+    }
+
+    public bool ServiceTaskFallbackActive
+    {
+        get => serviceTaskFallbackActive;
+        set
+        {
+            if (SetField(ref serviceTaskFallbackActive, value))
+            {
+                RaiseBackgroundModeChanged();
             }
         }
     }
@@ -513,12 +567,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
             if (IsSubscriptionMode)
             {
                 IsSubscriptionMode = false;
-                ModeHint = "订阅缺失，已自动回退本地端口。";
+                ModeHint = "订阅缺失，已回退本地端口。";
             }
         }
         else
         {
-            ModeHint = "订阅优先，失败自动回退本地端口。";
+            ModeHint = "订阅优先，失败回退本地端口。";
         }
     }
 
@@ -537,11 +591,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        ConnectionState = "已连接";
+        ConnectionState = "已就绪";
         ConnectionStatusLevel = StatusLevel.Ok;
         ConnectionDetail = IsSubscriptionMode
-            ? "订阅模式已连接"
-            : "本地端口已接入";
+            ? "订阅已载入，正在同步状态"
+            : "本地端口已载入，正在同步状态";
         SetLocalStatus(StatusLevel.Ok, "可用");
     }
 
@@ -692,6 +746,32 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(TrafficUsagePercentText));
         OnPropertyChanged(nameof(TrafficRemainingText));
         OnPropertyChanged(nameof(TrafficUpdatedAtText));
+    }
+
+    private void RaiseBackgroundModeChanged()
+    {
+        OnPropertyChanged(nameof(DesktopResidencyOptionsEnabled));
+        OnPropertyChanged(nameof(DesktopResidencySummary));
+        OnPropertyChanged(nameof(BackgroundProfileTitle));
+        OnPropertyChanged(nameof(BackgroundProfileDetail));
+        OnPropertyChanged(nameof(ServiceModeHint));
+        OnPropertyChanged(nameof(ServiceModeAccountText));
+        OnPropertyChanged(nameof(ShellResidencyText));
+        RaiseLogLocationChanged();
+    }
+
+    private void RaiseLogLocationChanged()
+    {
+        OnPropertyChanged(nameof(LogDirectoryPath));
+        OnPropertyChanged(nameof(DesktopLogFilePath));
+        OnPropertyChanged(nameof(SettingsLogPath));
+        OnPropertyChanged(nameof(CrashLogPath));
+        OnPropertyChanged(nameof(ServiceLogDirectory));
+        OnPropertyChanged(nameof(ServiceLogPath));
+        OnPropertyChanged(nameof(ActiveLogDirectory));
+        OnPropertyChanged(nameof(ActiveLogFilePath));
+        OnPropertyChanged(nameof(IsCustomLogDirectory));
+        OnPropertyChanged(nameof(LogLocationHint));
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)

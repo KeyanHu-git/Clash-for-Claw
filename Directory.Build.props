@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <DefaultDesktopPlatform>x64</DefaultDesktopPlatform>
+    <Platform Condition="'$(Platform)' == '' or '$(Platform)' == 'AnyCPU' or '$(Platform)' == 'Any CPU'">$(DefaultDesktopPlatform)</Platform>
+    <PlatformTarget Condition="'$(PlatformTarget)' == '' and '$(Platform)' != ''">$(Platform)</PlatformTarget>
+  </PropertyGroup>
+</Project>

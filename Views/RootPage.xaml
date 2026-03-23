@@ -652,7 +652,7 @@
                                     <TextBlock x:Name="NavLabelSettings" Grid.Column="1" VerticalAlignment="Center" Opacity="0" Foreground="{Binding Foreground, ElementName=NavItemSettings}" Style="{StaticResource NavLabelText}" Text="设置" />
                                 </Grid>
                             </ListViewItem>
-                            <ListViewItem x:Name="NavItemLogs" Tag="logs" ToolTipService.ToolTip="日志与高级">
+                            <ListViewItem x:Name="NavItemLogs" Tag="logs" ToolTipService.ToolTip="日志">
                                 <Grid x:Name="NavGridLogs" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition x:Name="NavIconColumnLogs" Width="32" />
@@ -661,7 +661,7 @@
                                     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Center">
                                         <SymbolIcon Symbol="Document" Foreground="{Binding Foreground, ElementName=NavItemLogs}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Grid>
-                                    <TextBlock x:Name="NavLabelLogs" Grid.Column="1" VerticalAlignment="Center" Opacity="0" Foreground="{Binding Foreground, ElementName=NavItemLogs}" Style="{StaticResource NavLabelText}" Text="日志与高级" />
+                                    <TextBlock x:Name="NavLabelLogs" Grid.Column="1" VerticalAlignment="Center" Opacity="0" Foreground="{Binding Foreground, ElementName=NavItemLogs}" Style="{StaticResource NavLabelText}" Text="日志" />
                                 </Grid>
                             </ListViewItem>
                             <ListViewItem x:Name="NavItemGuide" Tag="guide" ToolTipService.ToolTip="说明">

@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.2",
+    [string]$Version = "0.1.1",
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
     [string]$Platform = "x64",
@@ -8,6 +8,7 @@ param(
     [Alias("AdapterPath")][string]$BackendPath = "",
     [Alias("AdapterSourceDir")][string]$BackendSourceDir = "",
     [string]$MihomoPath = "",
+    [string]$InnoCompilerPath = "",
     [switch]$DisableBundledMihomo,
     [Alias("SkipAdapter")][switch]$SkipBackend
 )
@@ -53,6 +54,55 @@ function Get-MihomoArchForRuntime {
     }
 }
 
+function Get-InnoSetupArchConfig {
+    param([string]$RuntimeId)
+
+    switch ($RuntimeId) {
+        "win-x64" {
+            return @{
+                Allowed = "x64compatible"
+                InstallIn64BitMode = "x64compatible"
+            }
+        }
+        "win-arm64" {
+            return @{
+                Allowed = "arm64"
+                InstallIn64BitMode = "arm64"
+            }
+        }
+        "win-x86" {
+            return @{
+                Allowed = ""
+                InstallIn64BitMode = ""
+            }
+        }
+        default { throw "Unsupported runtime '$RuntimeId' for Inno Setup build." }
+    }
+}
+
+function Resolve-InnoSetupCompiler {
+    param([string]$ExplicitPath)
+
+    $candidates = @()
+    if (-not [string]::IsNullOrWhiteSpace($ExplicitPath)) {
+        $candidates += $ExplicitPath
+    }
+
+    $candidates += @(
+        (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
+        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+        "C:\Program Files\Inno Setup 6\ISCC.exe"
+    )
+
+    foreach ($candidate in $candidates) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path $candidate -PathType Leaf)) {
+            return (Resolve-Path $candidate).Path
+        }
+    }
+
+    throw "Inno Setup compiler not found. Install JRSoftware.InnoSetup or pass -InnoCompilerPath."
+}
+
 function Test-UsableBinary {
     param([string]$Path)
 
@@ -92,7 +142,7 @@ function Resolve-MihomoAssetPath {
     if ($AllowBundledFallback) {
         $bundledArch = Get-MihomoArchForRuntime -RuntimeId $RuntimeId
         if (-not [string]::IsNullOrWhiteSpace($bundledArch)) {
-            $bundledCandidate = Join-Path $RepoRoot ("backend\\ClashForClaw.Service\\internal\\mihomo\\assets\\windows\\" + $bundledArch + "\\mihomo.exe")
+            $bundledCandidate = Join-Path $RepoRoot ("backend\ClashForClaw.Service\internal\mihomo\assets\windows\" + $bundledArch + "\mihomo.exe")
             if (Test-UsableBinary $bundledCandidate) {
                 return (Resolve-Path $bundledCandidate).Path
             }
@@ -205,45 +255,39 @@ function Prune-PublishOutput {
     }
 
     $directoriesToRemove = @(
-        "NpuDetect",
-        "ru",
-        "ja",
-        "pt-BR",
-        "de",
-        "ko",
-        "fr",
-        "tr",
-        "cs",
-        "es",
-        "it",
-        "pl"
+        "NpuDetect"
     )
 
     foreach ($name in $directoriesToRemove) {
         Remove-PathIfExists (Join-Path $PublishPath $name)
     }
+
+    $languageWhitelist = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($name in @("en-US", "en-us", "zh-CN", "zh-cn")) {
+        [void]$languageWhitelist.Add($name)
+    }
+
+    $languageDirectoryPattern = '^[A-Za-z]{2,3}(?:-[A-Za-z]{2,8}){1,2}$'
+    foreach ($directory in Get-ChildItem $PublishPath -Directory) {
+        if ($directory.Name -match $languageDirectoryPattern -and -not $languageWhitelist.Contains($directory.Name)) {
+            Remove-PathIfExists $directory.FullName
+        }
+    }
 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$installerRoot = Join-Path $repoRoot "installer"
-$artifactsRoot = Join-Path $repoRoot "artifacts\\release"
-$stageDir = Join-Path $artifactsRoot ("installer-stage-" + $Version)
+$artifactsRoot = Join-Path $repoRoot "artifacts\release"
 $artifactLabel = if ([string]::IsNullOrWhiteSpace($ArtifactSuffix)) { "" } else { "-" + $ArtifactSuffix.Trim() }
 $publishDir = Join-Path $artifactsRoot ("publish-" + $Version + $artifactLabel + "-" + $Runtime)
 $portableZip = Join-Path $artifactsRoot ("Clash-for-Claw-" + $Version + $artifactLabel + "-portable-" + $Runtime + ".zip")
-$setupExe = Join-Path $artifactsRoot ("Clash-for-Claw-" + $Version + $artifactLabel + "-setup.exe")
-$sedPath = Join-Path $stageDir "package.sed"
-$payloadZip = Join-Path $stageDir "payload.zip"
-$defaultBackendSourceDir = Join-Path $repoRoot "backend\\ClashForClaw.Service"
-$ddfPath = Join-Path $artifactsRoot ("~Clash-for-Claw-" + $Version + $artifactLabel + "-setup.DDF")
-
+$setupBaseName = "Clash-for-Claw-" + $Version + $artifactLabel + "-setup"
+$setupExe = Join-Path $artifactsRoot ($setupBaseName + ".exe")
+$defaultBackendSourceDir = Join-Path $repoRoot "backend\ClashForClaw.Service"
 $selfContained = $PublishModel -eq "self-contained"
 
 New-Item -ItemType Directory -Path $artifactsRoot -Force | Out-Null
 Remove-Directory $publishDir
-Remove-Directory $stageDir
 New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
-New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
 
 dotnet publish (Join-Path $repoRoot "ClashForClaw.csproj") `
     -c $Configuration `
@@ -253,6 +297,7 @@ dotnet publish (Join-Path $repoRoot "ClashForClaw.csproj") `
     -p:WindowsAppSDKSelfContained=$selfContained `
     -p:PublishTrimmed=false `
     -p:PublishSingleFile=false `
+    -p:PublishReadyToRun=false `
     -o $publishDir
 
 Copy-Item (Join-Path $repoRoot "LICENSE") (Join-Path $publishDir "LICENSE.txt") -Force
@@ -265,7 +310,7 @@ if ([string]::IsNullOrWhiteSpace($resolvedBackendPath) -and -not $SkipBackend) {
         $resolvedBackendSourceDir = $defaultBackendSourceDir
     }
 
-    $builtBackendPath = Join-Path $stageDir ("ClashForClaw.Service-" + $Runtime + ".exe")
+    $builtBackendPath = Join-Path $artifactsRoot ("ClashForClaw.Service-" + $Runtime + ".exe")
     if (Test-Path (Join-Path $resolvedBackendSourceDir "go.mod")) {
         Build-OptimizedBackend -SourceDir $resolvedBackendSourceDir -RuntimeId $Runtime -OutputPath $builtBackendPath
         $resolvedBackendPath = $builtBackendPath
@@ -293,90 +338,41 @@ if (Test-Path $portableZip) {
 if (Test-Path $setupExe) {
     Remove-Item $setupExe -Force
 }
-if (Test-Path $ddfPath) {
-    Remove-Item $ddfPath -Force
-}
 
 [System.IO.Compression.ZipFile]::CreateFromDirectory($publishDir, $portableZip, [System.IO.Compression.CompressionLevel]::Optimal, $false)
-[System.IO.Compression.ZipFile]::CreateFromDirectory($publishDir, $payloadZip, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
-$packageInfo = [ordered]@{
-    AppName = "Clash for Claw"
-    Publisher = "KeyanHu"
-    Version = $Version
-    Runtime = $Runtime
-    PublishModel = $PublishModel
-    IncludesBackend = -not [string]::IsNullOrWhiteSpace($resolvedBackendPath)
-    IncludesMihomo = -not [string]::IsNullOrWhiteSpace($resolvedMihomoPath)
+$compilerPath = Resolve-InnoSetupCompiler -ExplicitPath $InnoCompilerPath
+$archConfig = Get-InnoSetupArchConfig -RuntimeId $Runtime
+$issPath = Join-Path $repoRoot "installer\ClashForClaw.iss"
+$licensePath = Join-Path $repoRoot "LICENSE"
+
+$isccArgs = @(
+    "/DMyAppVersion=$Version",
+    "/DMyAppPublisher=KeyanHu",
+    "/DMyAppName=Clash for Claw",
+    "/DMyPublishDir=$publishDir",
+    "/DMyOutputDir=$artifactsRoot",
+    "/DMyOutputBaseFilename=$setupBaseName",
+    "/DMyLicenseFile=$licensePath"
+)
+
+if (-not [string]::IsNullOrWhiteSpace($archConfig.Allowed)) {
+    $isccArgs += "/DMyArchitecturesAllowed=$($archConfig.Allowed)"
 }
-$packageInfo | ConvertTo-Json | Set-Content -Path (Join-Path $stageDir "package-info.json") -Encoding UTF8
 
-Copy-Item (Join-Path $installerRoot "install.cmd") (Join-Path $stageDir "install.cmd") -Force
-Copy-Item (Join-Path $installerRoot "install.ps1") (Join-Path $stageDir "install.ps1") -Force
-Copy-Item (Join-Path $installerRoot "uninstall.cmd") (Join-Path $stageDir "uninstall.cmd") -Force
-Copy-Item (Join-Path $installerRoot "uninstall.ps1") (Join-Path $stageDir "uninstall.ps1") -Force
+if (-not [string]::IsNullOrWhiteSpace($archConfig.InstallIn64BitMode)) {
+    $isccArgs += "/DMyArchitecturesInstallIn64BitMode=$($archConfig.InstallIn64BitMode)"
+}
 
-$sedContent = @"
-[Version]
-Class=IEXPRESS
-SEDVersion=3
-[Options]
-PackagePurpose=InstallApp
-ShowInstallProgramWindow=0
-HideExtractAnimation=0
-UseLongFileName=1
-InsideCompressed=0
-CAB_FixedSize=0
-CAB_ResvCodeSigning=0
-RebootMode=I
-InstallPrompt=
-DisplayLicense=
-FinishMessage=
-TargetName=$setupExe
-FriendlyName=Clash for Claw Setup
-AppLaunched=cmd.exe /d /s /c ""install.cmd""
-PostInstallCmd=<None>
-AdminQuietInstCmd=cmd.exe /d /s /c ""install.cmd /quiet""
-UserQuietInstCmd=cmd.exe /d /s /c ""install.cmd /quiet""
-SourceFiles=SourceFiles
-SelfDelete=0
-FILE0=install.cmd
-FILE1=install.ps1
-FILE2=uninstall.cmd
-FILE3=uninstall.ps1
-FILE4=package-info.json
-FILE5=payload.zip
-[Strings]
-FILE0=install.cmd
-FILE1=install.ps1
-FILE2=uninstall.cmd
-FILE3=uninstall.ps1
-FILE4=package-info.json
-FILE5=payload.zip
-[SourceFiles]
-SourceFiles0=$stageDir\
-[SourceFiles0]
-%FILE0%=
-%FILE1%=
-%FILE2%=
-%FILE3%=
-%FILE4%=
-%FILE5%=
-"@
-Set-Content -Path $sedPath -Value $sedContent -Encoding ASCII
+$isccArgs += $issPath
 
-$iexpress = Join-Path $env:SystemRoot "System32\\iexpress.exe"
-& $iexpress /N $sedPath
+& $compilerPath @isccArgs
 if ($LASTEXITCODE -ne 0) {
-    throw "IExpress failed with exit code $LASTEXITCODE."
+    throw "Inno Setup compilation failed with exit code $LASTEXITCODE."
 }
 
-$deadline = (Get-Date).AddMinutes(2)
-while ((Get-Date) -lt $deadline -and -not (Test-Path $setupExe)) {
-    Start-Sleep -Seconds 2
-}
 if (-not (Test-Path $setupExe)) {
-    throw "IExpress did not create $setupExe within the expected time window."
+    throw "Installer output not found at $setupExe."
 }
 
 Write-Output "Portable package: $portableZip"

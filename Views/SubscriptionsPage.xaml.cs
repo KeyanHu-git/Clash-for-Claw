@@ -806,7 +806,7 @@ public partial class SubscriptionsPage : Page, INotifyPropertyChanged
             "bad_request" => "请求参数无效。",
             "unauthorized" => "未授权，请刷新后重试。",
             "forbidden" => "仅允许本机访问。",
-            "mihomo_binary_not_found" => "未找到 mihomo 运行时。程序会先尝试自动下载；如下载不可达，请手动放到应用目录或数据目录的 bin 中。",
+            "mihomo_binary_not_found" => "未找到 mihomo 运行时。请检查安装包是否完整，或将其放到应用目录或数据目录的 bin 中。",
             "subscription_url_required" => "订阅 URL 为空。",
             "subscription_not_found" => "订阅不存在。",
             "subscription_url_missing" => "订阅 URL 缺失。",
@@ -835,7 +835,7 @@ public partial class SubscriptionsPage : Page, INotifyPropertyChanged
             return true;
         }
 
-        SetStatus("后台未启动。", true);
+        SetStatus("本地后端未启动。", true);
         return false;
     }
 

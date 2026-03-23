@@ -25,7 +25,7 @@
                     <TextBlock Style="{StaticResource TitleText}" Text="设置" />
                     <TextBlock
                         Style="{StaticResource MutedText}"
-                        Text="管理后台驻留方式、更新策略、外观偏好，以及本机代理与内置组件入口。"
+                        Text="管理后台方式、更新策略、外观和本地入口。"
                         TextWrapping="WrapWholeWords" />
                 </StackPanel>
 
@@ -34,7 +34,7 @@
                     IsOpen="{Binding IsServiceModeMessageOpen, Mode=TwoWay}"
                     Message="{Binding ServiceModeMessage}"
                     Severity="{Binding ServiceModeSeverity}"
-                    Title="后台模式" />
+                    Title="后台方式" />
 
                 <Border Style="{StaticResource HeroCard}">
                     <Grid RowSpacing="10">
@@ -50,7 +50,7 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource SectionTitle}" Text="当前运行画像" />
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="当前后台方式" />
                                 <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding BackgroundProfileTitle}" />
                                 <TextBlock
                                     Style="{StaticResource MutedText}"
@@ -80,21 +80,21 @@
 
                             <Border x:Name="HeroDesktopMetric" Style="{StaticResource MetricTile}">
                                 <StackPanel Spacing="3">
-                                    <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="桌面驻留" />
+                                    <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="当前驻留" />
                                     <TextBlock FontWeight="SemiBold" Text="{Binding DesktopResidencySummary}" TextWrapping="WrapWholeWords" />
                                 </StackPanel>
                             </Border>
 
                             <Border x:Name="HeroAccountMetric" Grid.Row="1" Style="{StaticResource MetricTile}">
                                 <StackPanel Spacing="3">
-                                    <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="服务账户" />
+                                    <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="运行账户" />
                                     <TextBlock FontWeight="SemiBold" Text="{Binding ServiceModeAccountText}" />
                                 </StackPanel>
                             </Border>
 
                             <Border x:Name="HeroDataMetric" Grid.Row="2" Style="{StaticResource MetricTile}">
                                 <StackPanel Spacing="3">
-                                    <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="服务数据目录" />
+                                    <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="后台数据目录" />
                                     <TextBlock FontWeight="SemiBold" Text="{Binding ServiceModeDataPath}" TextWrapping="WrapWholeWords" />
                                 </StackPanel>
                             </Border>
@@ -115,10 +115,10 @@
                     <Border x:Name="DesktopCard" Grid.ColumnSpan="2" Style="{StaticResource SettingsFormCard}">
                         <StackPanel Spacing="8">
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource SectionTitle}" Text="桌面驻留" />
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="桌面后台" />
                                 <TextBlock
                                     Style="{StaticResource MutedText}"
-                                    Text="适合日常使用，保留主界面、托盘和快速排障能力。"
+                                    Text="适合日常使用，保留主界面、托盘和快速排查能力。"
                                     TextWrapping="WrapWholeWords" />
                             </StackPanel>
 
@@ -142,7 +142,7 @@
                                     IsOn="{Binding SilentOnBootEnabled, Mode=TwoWay}" />
                                 <ToggleSwitch
                                     Grid.Row="2"
-                                    Header="关闭窗口时驻留托盘"
+                                    Header="关闭窗口时保留托盘"
                                     IsEnabled="{Binding DesktopResidencyOptionsEnabled}"
                                     IsOn="{Binding CloseToTrayEnabled, Mode=TwoWay}" />
                             </Grid>
@@ -172,10 +172,10 @@
                                 </Grid.RowDefinitions>
 
                                 <StackPanel Spacing="4">
-                                    <TextBlock Style="{StaticResource SectionTitle}" Text="服务模式（高级）" />
+                                    <TextBlock Style="{StaticResource SectionTitle}" Text="Windows 服务模式" />
                                     <TextBlock
                                         FontWeight="SemiBold"
-                                        Text="完全静默运行，无窗口、无托盘。"
+                                        Text="启用后会尝试注册 Windows 服务。"
                                         TextWrapping="WrapWholeWords" />
                                     <TextBlock
                                         Style="{StaticResource MutedText}"
@@ -186,9 +186,8 @@
                                 <ToggleSwitch
                                     x:Name="ServiceModeSwitch"
                                     Grid.Row="1"
-                                    Header=""
                                     OffContent="桌面后台"
-                                    OnContent="完全静默"
+                                    OnContent="Windows 服务"
                                     IsOn="{Binding ServiceModeEnabled, Mode=TwoWay}"
                                     Toggled="OnServiceModeToggled"
                                     VerticalAlignment="Top" />
@@ -202,14 +201,14 @@
 
                                 <Border Style="{StaticResource MetricTile}">
                                     <StackPanel Spacing="3">
-                                        <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="服务账户" />
+                                        <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="运行账户" />
                                         <TextBlock FontWeight="SemiBold" Text="{Binding ServiceModeAccountText}" />
                                     </StackPanel>
                                 </Border>
 
                                 <Border Grid.Column="1" Style="{StaticResource MetricTile}">
                                     <StackPanel Spacing="3">
-                                        <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="服务数据目录" />
+                                        <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="后台数据目录" />
                                         <TextBlock FontWeight="SemiBold" Text="{Binding ServiceModeDataPath}" TextWrapping="WrapWholeWords" />
                                     </StackPanel>
                                 </Border>
@@ -217,10 +216,10 @@
 
                             <Border Style="{StaticResource InsetPanel}">
                                 <StackPanel Spacing="4">
-                                    <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="切换影响" />
+                                    <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="切换说明" />
                                     <TextBlock
                                         Style="{StaticResource MutedText}"
-                                        Text="开启后前台会退出，之后后台继续运行；更适合固定常驻和无人值守。"
+                                        Text="注册成功后前台可退出；若只回退为计划任务，会保留当前界面并提示原因。"
                                         TextWrapping="WrapWholeWords" />
                                 </StackPanel>
                             </Border>
@@ -243,29 +242,29 @@
                     <Border x:Name="StrategyCard" Grid.ColumnSpan="2" Style="{StaticResource SettingsFormCard}">
                         <StackPanel Spacing="8">
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource SectionTitle}" Text="订阅策略" />
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="订阅更新" />
                                 <TextBlock
                                     Style="{StaticResource MutedText}"
-                                    Text="控制订阅刷新、探测节奏和订阅列表密度。"
+                                    Text="控制刷新周期、探测周期和列表密度。"
                                     TextWrapping="WrapWholeWords" />
                             </StackPanel>
 
                             <NumberBox
-                                Header="订阅流量刷新周期（小时）"
+                                Header="刷新周期（小时）"
                                 Minimum="1"
                                 Maximum="168"
                                 SpinButtonPlacementMode="Inline"
                                 Value="{Binding SubscriptionRefreshHours, Mode=TwoWay}"
                                 ValueChanged="OnSubscriptionRefreshChanged" />
                             <NumberBox
-                                Header="网关探测周期（分钟）"
+                                Header="探测周期（分钟）"
                                 Minimum="1"
                                 Maximum="1440"
                                 SpinButtonPlacementMode="Inline"
                                 Value="{Binding SubscriptionProbeMinutes, Mode=TwoWay}"
                                 ValueChanged="OnSubscriptionProbeChanged" />
                             <NumberBox
-                                Header="订阅列表列数"
+                                Header="列表列数"
                                 Minimum="1"
                                 Maximum="3"
                                 SpinButtonPlacementMode="Inline"
@@ -280,7 +279,7 @@
                                 <TextBlock Style="{StaticResource SectionTitle}" Text="外观" />
                                 <TextBlock
                                     Style="{StaticResource MutedText}"
-                                    Text="主题会直接影响整套仪表盘与背景层次。"
+                                    Text="主题会立即应用到主界面和背景层。"
                                     TextWrapping="WrapWholeWords" />
                             </StackPanel>
 
@@ -288,15 +287,15 @@
                                 Header="主题"
                                 SelectedValuePath="Tag"
                                 SelectedValue="{Binding ThemeMode, Mode=TwoWay}">
-                                <ComboBoxItem Content="系统跟随" Tag="System" />
-                                <ComboBoxItem Content="暗夜" Tag="Dark" />
+                                <ComboBoxItem Content="跟随系统" Tag="System" />
+                                <ComboBoxItem Content="暗色" Tag="Dark" />
                                 <ComboBoxItem Content="浅色" Tag="Light" />
                             </ComboBox>
 
                             <Border Style="{StaticResource InsetPanel}">
                                 <TextBlock
                                     Style="{StaticResource MutedText}"
-                                    Text="主题切换会立即影响主界面和状态面板，无需重启。"
+                                    Text="切换后立即生效，无需重启。"
                                     TextWrapping="WrapWholeWords" />
                             </Border>
                         </StackPanel>
@@ -308,20 +307,20 @@
                                 <TextBlock Style="{StaticResource SectionTitle}" Text="内置后台组件" />
                                 <TextBlock
                                     Style="{StaticResource MutedText}"
-                                    Text="保留默认内置路径即可，只有在你明确维护自定义组件时才需要改这里。"
+                                    Text="默认使用安装包内置组件；只有维护自定义组件时才需要修改。"
                                     TextWrapping="WrapWholeWords" />
                             </StackPanel>
 
                             <ToggleSwitch
-                                Header="自动运行后台组件"
+                                Header="自动启动内置后台"
                                 IsOn="{Binding AutoRunCliEnabled, Mode=TwoWay}" />
                             <TextBox
                                 Header="后台组件路径"
                                 Style="{StaticResource InputTextBox}"
                                 Text="{Binding CliPath, Mode=TwoWay}"
-                                PlaceholderText="默认随安装包内置" />
+                                PlaceholderText="默认使用内置组件" />
                             <TextBox
-                                Header="后台启动参数"
+                                Header="启动参数"
                                 Style="{StaticResource InputTextBox}"
                                 Text="{Binding CliArgs, Mode=TwoWay}"
                                 PlaceholderText="--daemon" />
@@ -331,10 +330,10 @@
                     <Border x:Name="NetworkCard" Grid.Row="3" Grid.ColumnSpan="2" Style="{StaticResource SettingsFormCard}">
                         <StackPanel Spacing="8">
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource SectionTitle}" Text="网络与安全" />
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="本地入口" />
                                 <TextBlock
                                     Style="{StaticResource MutedText}"
-                                    Text="这里只保留本地代理入口；系统代理开关已经迁移到概览页。"
+                                    Text="设置本地代理端口。系统代理开关已移到概览页。"
                                     TextWrapping="WrapWholeWords" />
                             </StackPanel>
 
@@ -350,7 +349,7 @@
                                     <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="提醒" />
                                     <TextBlock
                                         Style="{StaticResource MutedText}"
-                                        Text="只有在非订阅模式或你明确调整本地入口时，才需要修改这里。"
+                                        Text="仅在本地端口模式或明确修改入口时需要调整。"
                                         TextWrapping="WrapWholeWords" />
                                 </StackPanel>
                             </Border>

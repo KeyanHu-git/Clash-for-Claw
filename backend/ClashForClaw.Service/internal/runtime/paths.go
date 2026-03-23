@@ -9,6 +9,7 @@ const (
 	AppFolderName       = "ClashForClaw"
 	legacyAppFolderName = "OpenClawAdapter"
 	BaseDirEnvVar       = "CLASH_FOR_CLAW_BASE_DIR"
+	LogDirEnvVar        = "CLASH_FOR_CLAW_LOG_DIR"
 )
 
 type Paths struct {
@@ -50,12 +51,19 @@ func resolvePaths(baseOverride string, serviceMode bool) (Paths, error) {
 }
 
 func buildPaths(base string) Paths {
+	logsDir := filepath.Join(base, "logs")
+	if envLogs := os.Getenv(LogDirEnvVar); envLogs != "" {
+		if trimmed := filepath.Clean(envLogs); trimmed != "." {
+			logsDir = trimmed
+		}
+	}
+
 	paths := Paths{
 		BaseDir:    base,
 		ConfigPath: filepath.Join(base, "config.json"),
 		RuntimeDir: filepath.Join(base, "runtime"),
 		BinDir:     filepath.Join(base, "bin"),
-		LogsDir:    filepath.Join(base, "logs"),
+		LogsDir:    logsDir,
 		MihomoDir:  filepath.Join(base, "mihomo"),
 	}
 	return paths

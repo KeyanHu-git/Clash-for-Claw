@@ -4,7 +4,6 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="using:ClashForClaw"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     SizeChanged="OnPageSizeChanged"
     mc:Ignorable="d">
@@ -18,32 +17,62 @@
         <Grid x:Name="LogsLayoutRoot">
             <StackPanel Padding="{StaticResource PagePadding}" Spacing="12">
                 <StackPanel Spacing="4">
-                    <TextBlock Style="{StaticResource TitleText}" Text="日志与高级" />
+                    <TextBlock Style="{StaticResource TitleText}" Text="日志" />
                     <TextBlock
                         Style="{StaticResource MutedText}"
-                        Text="集中查看本机日志位置和当前调试开关，避免在多个页面分散寻找。"
+                        Text="统一查看桌面模式与 Windows 服务模式的日志位置。"
                         TextWrapping="WrapWholeWords" />
                 </StackPanel>
 
                 <Border Style="{StaticResource HeroCard}">
-                    <StackPanel Spacing="8">
-                        <TextBlock Style="{StaticResource SectionTitle}" Text="运行痕迹" />
+                    <StackPanel Spacing="10">
+                        <StackPanel Spacing="4">
+                            <TextBlock Style="{StaticResource SectionTitle}" Text="日志记录位置" />
+                            <TextBlock
+                                Style="{StaticResource MutedText}"
+                                Text="{Binding LogLocationHint}"
+                                TextWrapping="WrapWholeWords" />
+                        </StackPanel>
+
                         <Border Style="{StaticResource InsetPanel}">
-                            <Grid ColumnSpacing="10" RowSpacing="6">
+                            <Grid ColumnSpacing="12" RowSpacing="8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="280" />
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Style="{StaticResource MutedText}" Text="日志文件位置" />
-                                <TextBlock Grid.Row="1" FontWeight="SemiBold" Text="{Binding LogFilePath}" TextWrapping="WrapWholeWords" />
-                                <TextBlock Grid.Column="1" Style="{StaticResource MutedText}" Text="最近热重载" />
-                                <TextBlock Grid.Column="1" Grid.Row="1" FontWeight="SemiBold" HorizontalAlignment="Right" Text="{Binding LastReloadText}" />
+                                <TextBlock Style="{StaticResource MutedText}" Text="桌面日志目录" />
+                                <StackPanel Grid.Row="1" Spacing="8">
+                                    <TextBlock FontWeight="SemiBold" Text="{Binding LogDirectoryPath}" TextWrapping="WrapWholeWords" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Click="OnPickLogDirectoryClicked" Content="选择目录" />
+                                        <Button Click="OnOpenLogDirectoryClicked" Content="打开目录" />
+                                        <Button
+                                            Click="OnResetLogDirectoryClicked"
+                                            Content="恢复默认"
+                                            IsEnabled="{Binding IsCustomLogDirectory}" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="1" Style="{StaticResource MutedText}" Text="当前生效日志" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Grid.Row="1"
+                                    FontWeight="SemiBold"
+                                    Text="{Binding ActiveLogFilePath}"
+                                    TextWrapping="WrapWholeWords" />
                             </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource InsetPanel}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource PanelLabelText}" Text="最近重载" />
+                                <TextBlock FontWeight="SemiBold" Text="{Binding LastReloadText}" />
+                            </StackPanel>
                         </Border>
                     </StackPanel>
                 </Border>
@@ -61,33 +90,47 @@
                     <Border x:Name="LoggingCard" Style="{StaticResource LogsCard}">
                         <StackPanel Spacing="8">
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource SectionTitle}" Text="日志级别" />
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="调试日志" />
                                 <TextBlock
                                     Style="{StaticResource MutedText}"
-                                    Text="只有在排查问题时才建议打开调试日志，平时保持关闭更干净。"
+                                    Text="仅在排查问题时启用，平时保持关闭即可。"
                                     TextWrapping="WrapWholeWords" />
                             </StackPanel>
 
                             <ToggleSwitch
                                 Header="启用调试日志"
                                 IsOn="{Binding DebugLoggingEnabled, Mode=TwoWay}" />
+
+                            <Border Style="{StaticResource InsetPanel}">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Style="{StaticResource PanelLabelText}" Text="桌面侧日志文件" />
+                                    <TextBlock Text="{Binding DesktopLogFilePath}" TextWrapping="WrapWholeWords" />
+                                    <TextBlock Text="{Binding SettingsLogPath}" TextWrapping="WrapWholeWords" />
+                                    <TextBlock Text="{Binding CrashLogPath}" TextWrapping="WrapWholeWords" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 
                     <Border x:Name="AdvancedCard" Grid.Row="1" Style="{StaticResource LogsCard}">
                         <StackPanel Spacing="8">
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource SectionTitle}" Text="高级提示" />
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Windows 服务日志" />
                                 <TextBlock
                                     Style="{StaticResource MutedText}"
-                                    Text="配置修改后如果没有立即生效，可以优先对照热重载时间确认是否已经应用。"
+                                    Text="服务模式由 LocalService 账户运行，日志固定写入服务目录。"
                                     TextWrapping="WrapWholeWords" />
                             </StackPanel>
 
                             <Border Style="{StaticResource InsetPanel}">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Style="{StaticResource PanelLabelText}" Text="热重载状态" />
-                                    <TextBlock FontWeight="SemiBold" Text="{Binding LastReloadText}" />
+                                <StackPanel Spacing="6">
+                                    <TextBlock Style="{StaticResource PanelLabelText}" Text="服务日志目录" />
+                                    <TextBlock FontWeight="SemiBold" Text="{Binding ServiceLogDirectory}" TextWrapping="WrapWholeWords" />
+                                    <TextBlock Style="{StaticResource MutedText}" Text="{Binding ServiceLogPath}" TextWrapping="WrapWholeWords" />
+                                    <Button
+                                        Click="OnOpenServiceLogDirectoryClicked"
+                                        Content="打开服务目录"
+                                        HorizontalAlignment="Left" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>

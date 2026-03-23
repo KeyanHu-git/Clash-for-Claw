@@ -9,9 +9,17 @@ public sealed class ServiceModeState
 {
     public string Mode { get; init; } = "none";
     public string Status { get; init; } = "unknown";
+    public string Error { get; init; } = string.Empty;
+    public string Reason { get; init; } = string.Empty;
+    public string Hint { get; init; } = string.Empty;
+    public bool RequiresElevation { get; init; }
+    public bool RequiresTaskSchedulerAccess { get; init; }
 
     public bool IsEnabled
         => !string.Equals(Mode, "none", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsServiceMode
+        => string.Equals(Mode, "service", StringComparison.OrdinalIgnoreCase);
 
     public bool IsTaskFallback
         => string.Equals(Mode, "task", StringComparison.OrdinalIgnoreCase);
@@ -32,35 +40,20 @@ public sealed class ServiceModeResult
 
 public static class ServiceModeManager
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
-    private sealed class ServiceCommandResponse
-    {
-        public bool Ok { get; init; }
-        public string Action { get; init; } = string.Empty;
-        public string Mode { get; init; } = string.Empty;
-        public string Status { get; init; } = string.Empty;
-        public string Error { get; init; } = string.Empty;
-    }
-
     public static ServiceModeState Query(AppSettings settings)
     {
         var cliPath = AppPaths.ResolveCliPath(settings.CliPath);
         if (!File.Exists(cliPath))
         {
-            return new ServiceModeState();
+            return new ServiceModeState
+            {
+                Error = "未找到内置服务组件。",
+                Reason = "cli_missing",
+                Hint = "请确认发布目录中的 ClashForClaw.Service.exe 存在并可访问。",
+            };
         }
 
-        var status = RunServiceCommand(cliPath, "status");
-        if (!status.Ok)
-        {
-            return new ServiceModeState();
-        }
-
-        return ParseState(status);
+        return ParseState(RunServiceCommand(cliPath, "status"));
     }
 
     public static ServiceModeResult Enable(AppSettings settings)
@@ -71,8 +64,8 @@ public static class ServiceModeManager
             return new ServiceModeResult
             {
                 Failed = true,
-                Title = "未找到后台组件",
-                Message = "未找到内置后台服务，暂时无法切换到服务模式。",
+                Title = "无法启用 Windows 服务模式",
+                Message = "未找到内置服务组件，当前无法注册 Windows 服务。",
             };
         }
 
@@ -85,8 +78,8 @@ public static class ServiceModeManager
             return new ServiceModeResult
             {
                 Failed = true,
-                Title = "服务模式未启用",
-                Message = $"准备服务模式运行时失败：{ex.Message}",
+                Title = "无法启用 Windows 服务模式",
+                Message = $"准备 Windows 服务运行环境失败：{ex.Message}",
             };
         }
 
@@ -99,7 +92,7 @@ public static class ServiceModeManager
                 return new ServiceModeResult
                 {
                     Failed = true,
-                    Title = "服务模式未启用",
+                    Title = "无法启用 Windows 服务模式",
                     Message = BuildEnableFailureMessage(install),
                 };
             }
@@ -124,7 +117,7 @@ public static class ServiceModeManager
             return new ServiceModeResult
             {
                 Failed = true,
-                Title = "服务模式未启用",
+                Title = "无法启用 Windows 服务模式",
                 Message = BuildEnableFailureMessage(start),
             };
         }
@@ -138,8 +131,8 @@ public static class ServiceModeManager
         return new ServiceModeResult
         {
             Failed = true,
-            Title = "服务模式未启用",
-            Message = "后台服务没有进入预期状态。",
+            Title = "Windows 服务模式未就绪",
+            Message = "服务注册完成后没有进入预期状态，请检查服务日志与当前权限。",
         };
     }
 
@@ -150,8 +143,8 @@ public static class ServiceModeManager
         {
             return new ServiceModeResult
             {
-                Title = "服务模式已关闭",
-                Message = "未找到内置后台组件，已按桌面后台模式处理。",
+                Title = "Windows 服务模式已关闭",
+                Message = "未找到内置服务组件，已按桌面后台模式处理。",
             };
         }
 
@@ -160,8 +153,8 @@ public static class ServiceModeManager
         {
             return new ServiceModeResult
             {
-                Title = "服务模式已关闭",
-                Message = "当前没有已注册的服务模式，已按桌面后台模式处理。",
+                Title = "Windows 服务模式已关闭",
+                Message = "当前没有已注册的后台托管模式，已恢复为桌面后台。",
             };
         }
 
@@ -174,14 +167,14 @@ public static class ServiceModeManager
             return new ServiceModeResult
             {
                 Failed = true,
-                Title = "关闭服务模式失败",
-                Message = ExtractError(uninstall, "后台服务未能卸载，请检查当前账户是否具备管理权限。"),
+                Title = "关闭 Windows 服务模式失败",
+                Message = ExtractError(uninstall, "后台托管模式未能卸载，请检查当前账户权限。"),
             };
         }
 
         return new ServiceModeResult
         {
-            Title = "已恢复到桌面后台",
+            Title = "已恢复为桌面后台",
             Message = "后台已切回桌面模式，现在可以继续使用托盘、静默启动和关闭最小化到托盘。",
         };
     }
@@ -219,7 +212,7 @@ public static class ServiceModeManager
 
         try
         {
-            return JsonSerializer.Deserialize<ServiceCommandResponse>(output, JsonOptions);
+            return JsonSerializer.Deserialize(output, AppJsonContext.Default.ServiceCommandResponse);
         }
         catch (JsonException)
         {
@@ -233,20 +226,31 @@ public static class ServiceModeManager
         {
             Mode = string.IsNullOrWhiteSpace(response.Mode) ? "none" : response.Mode,
             Status = string.IsNullOrWhiteSpace(response.Status) ? "unknown" : response.Status,
+            Error = response.Error,
+            Reason = response.Reason,
+            Hint = response.Hint,
+            RequiresElevation = response.RequiresElevation,
+            RequiresTaskSchedulerAccess = response.RequiresTaskSchedulerAccess,
         };
     }
 
     private static ServiceModeResult BuildEnabledResult(ServiceModeState state)
     {
-        var isTaskFallback = state.IsTaskFallback;
+        if (state.IsTaskFallback)
+        {
+            return new ServiceModeResult
+            {
+                Title = "未注册为 Windows 服务，已回退为计划任务",
+                FallbackScheduled = true,
+                Message = $"当前未能注册 Windows 服务，系统已回退为计划任务以维持后台运行。这不等同于 Windows 服务模式；若要注册真正的 Windows 服务，请使用管理员权限重新启用。数据目录：{AppPaths.ServiceBaseDirectory}",
+            };
+        }
+
         return new ServiceModeResult
         {
-            Title = isTaskFallback ? "已切换到静默后台（计划任务）" : "已切换到静默后台（Windows 服务）",
-            ServiceStarted = !isTaskFallback,
-            FallbackScheduled = isTaskFallback,
-            Message = isTaskFallback
-                ? $"已使用计划任务接管后台驻留。当前窗口与托盘可以关闭，后台会在登录后静默运行。数据目录：{AppPaths.ServiceBaseDirectory}"
-                : $"已使用低权限 LocalService 后台服务接管运行。当前窗口与托盘可以关闭，后台会持续静默运行。数据目录：{AppPaths.ServiceBaseDirectory}",
+            Title = "已切换到 Windows 服务模式",
+            ServiceStarted = true,
+            Message = $"当前已注册为 Windows 服务，由 LocalService 账户接管后台运行。前台窗口与托盘可以关闭，后台仍会持续运行。数据目录：{AppPaths.ServiceBaseDirectory}",
         };
     }
 
@@ -256,10 +260,12 @@ public static class ServiceModeManager
         {
             return result.StandardError;
         }
+
         if (!string.IsNullOrWhiteSpace(result.StandardOutput))
         {
             return result.StandardOutput;
         }
+
         return fallback;
     }
 
@@ -269,6 +275,7 @@ public static class ServiceModeManager
         {
             return response.Error;
         }
+
         return fallback;
     }
 
@@ -284,19 +291,25 @@ public static class ServiceModeManager
 
         return new ServiceModeResult
         {
-            Title = "未切换到服务模式，已回退桌面后台",
-            Message = $"{result.Message}\n\n已自动保留桌面后台，你可以继续使用托盘、静默启动和关闭最小化到托盘，不会中断当前连接。",
+            Title = "未启用 Windows 服务模式，已回退为桌面后台",
+            Message = $"{result.Message}\n\n当前已自动保留桌面后台，托盘、静默启动和关闭最小化到托盘仍可继续使用，不会中断现有连接。",
             DesktopFallbackStarted = true,
         };
     }
 
     private static string BuildEnableFailureMessage(ServiceCommandResponse result)
     {
-        var detail = ExtractError(result, "注册后台服务失败。");
-        if (ContainsKnownMessage(detail, "install_requires_elevation_or_task_scheduler_access")
+        var detail = ExtractError(result, "注册 Windows 服务失败。");
+        if (result.RequiresElevation
+            || ContainsKnownMessage(result.Reason, "install_requires_elevation_or_task_scheduler_access")
             || ContainsKnownMessage(detail, "Access is denied"))
         {
-            return "当前会话没有提升权限，暂时无法注册 Windows 服务或计划任务。可以右键“以管理员身份运行”后再次启用；这次会先自动保留桌面后台，保证代理链路不中断。";
+            return "当前会话没有管理员权限，暂时无法注册 Windows 服务。请右键“以管理员身份运行”后重新启用；在此之前应用会保持现有后台方式，避免中断当前链路。";
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Hint))
+        {
+            return $"{detail}\n\n{result.Hint}";
         }
 
         return detail;

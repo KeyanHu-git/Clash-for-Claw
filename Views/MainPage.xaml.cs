@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
@@ -35,7 +34,7 @@ public partial class MainPage : Page
         }
 
         isLoaded = true;
-        if (!await EnsureBackendReadyAsync("后台未启动。"))
+        if (!await EnsureBackendReadyAsync("本地后端未启动。"))
         {
             return;
         }
@@ -62,7 +61,7 @@ public partial class MainPage : Page
 
     private async void OnReloadClicked(object sender, RoutedEventArgs e)
     {
-        if (!await EnsureBackendReadyAsync("后台未启动。"))
+        if (!await EnsureBackendReadyAsync("本地后端未启动。"))
         {
             return;
         }
@@ -86,7 +85,7 @@ public partial class MainPage : Page
 
     private async void OnProbeClicked(object sender, RoutedEventArgs e)
     {
-        if (!await EnsureBackendReadyAsync("后台未启动。"))
+        if (!await EnsureBackendReadyAsync("本地后端未启动。"))
         {
             return;
         }
@@ -137,7 +136,7 @@ public partial class MainPage : Page
         BeginModeSwitch(useSubscription: true);
         try
         {
-            if (!await EnsureBackendReadyAsync("后台未启动。"))
+            if (!await EnsureBackendReadyAsync("本地后端未启动。"))
             {
                 ViewModel.IsSubscriptionMode = previousMode;
                 ViewModel.ModeHint = previousHint;
@@ -157,10 +156,10 @@ public partial class MainPage : Page
             await Api.ActivateSubscriptionAsync(target.Id);
             ViewModel.SubscriptionUrl = string.IsNullOrWhiteSpace(target.Url) ? string.Empty : target.Url;
             ApplySubscriptionSnapshot(target);
-            ViewModel.ConnectionState = "已连接";
-            ViewModel.ConnectionStatusLevel = StatusLevel.Ok;
-            ViewModel.ConnectionDetail = "订阅模式已切换，正在同步状态...";
-            ViewModel.ModeHint = "订阅优先，失败自动回退本地端口。";
+            ViewModel.ConnectionState = "同步中";
+            ViewModel.ConnectionStatusLevel = StatusLevel.Warning;
+            ViewModel.ConnectionDetail = "订阅已切换，正在检查链路...";
+            ViewModel.ModeHint = "订阅优先，失败回退本地端口。";
             QueueDashboardRefresh(applyProbe: true);
         }
         catch (Exception ex)
@@ -195,18 +194,18 @@ public partial class MainPage : Page
             return;
         }
 
-        var payload = new Dictionary<string, object>
+        var payload = new ProxyConfigUpdateRequest
         {
-            ["proxy"] = new Dictionary<string, object>
+            Proxy = new ProxyConfigPatch
             {
-                ["mode"] = "local_port",
-                ["local_port"] = port,
+                Mode = "local_port",
+                LocalPort = port,
             },
         };
 
         try
         {
-            if (!await EnsureBackendReadyAsync("后台未启动。"))
+            if (!await EnsureBackendReadyAsync("本地后端未启动。"))
             {
                 ViewModel.IsSubscriptionMode = previousMode;
                 ViewModel.ModeHint = previousHint;
@@ -221,8 +220,8 @@ public partial class MainPage : Page
             ViewModel.TrafficTotalGb = 0;
             ViewModel.ConnectionState = "已连接";
             ViewModel.ConnectionStatusLevel = StatusLevel.Ok;
-            ViewModel.ConnectionDetail = $"本地端口 {port} 已切换，正在同步状态...";
-            ViewModel.ModeHint = $"当前直连本地端口 {port}。";
+            ViewModel.ConnectionDetail = $"本地端口 {port} 已切换。";
+            ViewModel.ModeHint = $"当前使用本地端口 {port}。";
             QueueDashboardRefresh();
         }
         catch (Exception ex)
@@ -372,7 +371,7 @@ public partial class MainPage : Page
             return;
         }
 
-        if (!await EnsureBackendReadyAsync("后台未启动。"))
+        if (!await EnsureBackendReadyAsync("本地后端未启动。"))
         {
             isUpdatingSystemProxySwitch = true;
             toggle.IsOn = false;

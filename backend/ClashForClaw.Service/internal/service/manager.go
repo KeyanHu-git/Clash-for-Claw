@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/kardianos/service"
 
@@ -19,6 +20,9 @@ const (
 	ServiceDisplayName = "Clash for Claw"
 	ServiceDescription = "Clash for Claw background service"
 	legacyServiceName  = "OpenClawAdapter"
+	startSettleTimeout = 5 * time.Second
+	startPollInterval  = 250 * time.Millisecond
+	startStablePolls   = 3
 )
 
 type Mode string
@@ -69,10 +73,20 @@ func (m *Manager) Install() (Mode, error) {
 		m.cleanupLegacyArtifacts()
 		return ModeService, nil
 	}
+	mode, err = m.detectInstalledMode()
+	if err == nil && mode != ModeNone {
+		m.cleanupLegacyArtifacts()
+		return mode, nil
+	}
 	taskErr := installTask(m.exe, m.userPaths.BaseDir)
 	if taskErr == nil {
 		m.cleanupLegacyArtifacts()
 		return ModeTask, nil
+	}
+	mode, err = m.detectInstalledMode()
+	if err == nil && mode != ModeNone {
+		m.cleanupLegacyArtifacts()
+		return mode, nil
 	}
 	return "", joinInstallErrors(serviceErr, taskErr)
 }
@@ -104,12 +118,15 @@ func (m *Manager) Start() error {
 }
 
 func (m *Manager) StartWithMode() (Mode, error) {
-	mode, _, taskRegistered, err := m.currentRegistrations()
+	mode, status, taskRegistered, err := m.currentRegistrations()
 	if err != nil {
 		return ModeNone, err
 	}
 	switch {
 	case mode == ModeService:
+		if status == service.StatusRunning {
+			return ModeService, nil
+		}
 		if err := m.prepareServiceBase(); err != nil {
 			if hasAccessDenied(err) {
 				return ModeService, wrapCommandReason(ReasonServiceStartRequiresElevation, err)
@@ -120,6 +137,9 @@ func (m *Manager) StartWithMode() (Mode, error) {
 			if hasAccessDenied(err) {
 				return ModeService, wrapCommandReason(ReasonServiceStartRequiresElevation, err)
 			}
+			return ModeService, err
+		}
+		if err := m.waitForServiceRunning(); err != nil {
 			return ModeService, err
 		}
 		return ModeService, nil
@@ -137,12 +157,15 @@ func (m *Manager) StartWithMode() (Mode, error) {
 }
 
 func (m *Manager) Stop() error {
-	mode, _, taskRegistered, err := m.currentRegistrations()
+	mode, status, taskRegistered, err := m.currentRegistrations()
 	if err != nil {
 		return err
 	}
 	switch {
 	case mode == ModeService:
+		if status == service.StatusStopped {
+			return nil
+		}
 		return m.stopService()
 	case taskRegistered:
 		return stopTask()
@@ -247,7 +270,47 @@ func hasAccessDenied(err error) bool {
 	if err == nil {
 		return false
 	}
-	return strings.Contains(strings.ToLower(err.Error()), "access is denied")
+	text := strings.ToLower(err.Error())
+	return strings.Contains(text, "access is denied") || strings.Contains(text, "拒绝访问")
+}
+
+func (m *Manager) detectInstalledMode() (Mode, error) {
+	mode, _, taskRegistered, err := m.currentRegistrations()
+	if err != nil {
+		return ModeNone, err
+	}
+	if mode != ModeNone {
+		return mode, nil
+	}
+	if taskRegistered {
+		return ModeTask, nil
+	}
+	return ModeNone, nil
+}
+
+func (m *Manager) waitForServiceRunning() error {
+	deadline := time.Now().Add(startSettleTimeout)
+	runningPolls := 0
+
+	for time.Now().Before(deadline) {
+		mode, status, _, err := m.currentRegistrations()
+		if err != nil {
+			return err
+		}
+		if mode == ModeService {
+			if status == service.StatusRunning {
+				runningPolls++
+				if runningPolls >= startStablePolls {
+					return nil
+				}
+			} else if runningPolls > 0 {
+				return fmt.Errorf("%s: service failed to remain running after start", ReasonStartFailed)
+			}
+		}
+		time.Sleep(startPollInterval)
+	}
+
+	return fmt.Errorf("%s: service failed to remain running after start", ReasonStartFailed)
 }
 
 func (m *Manager) cleanupLegacyArtifacts() {

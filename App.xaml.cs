@@ -37,6 +37,13 @@ namespace ClashForClaw
         /// <param name="e">Details about the launch request and process.</param>
         protected override void OnLaunched(LaunchActivatedEventArgs e)
         {
+            if (!SingleInstanceManager.TryAcquirePrimaryInstance())
+            {
+                SingleInstanceManager.SignalPrimaryInstance();
+                Exit();
+                return;
+            }
+
             AppState.Initialize();
 
             window ??= new Window();
@@ -63,6 +70,7 @@ namespace ClashForClaw
                 throw;
             }
             window.Activate();
+            SingleInstanceManager.StartActivationListener(window);
 
             AppState.ApplySettings();
             HookWindowEvents(window);
@@ -83,9 +91,12 @@ namespace ClashForClaw
         {
             try
             {
-                var dir = AppPaths.UserDataDirectory;
-                Directory.CreateDirectory(dir);
-                var logPath = Path.Combine(dir, "crash.log");
+                var logPath = AppPaths.GetCrashLogPath(SettingsStore.Current.LogDirectory);
+                var dir = Path.GetDirectoryName(logPath);
+                if (!string.IsNullOrWhiteSpace(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
                 File.AppendAllText(logPath, $"{DateTimeOffset.Now:u}\n{exception}\n\n");
             }
             catch

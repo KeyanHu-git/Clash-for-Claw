@@ -1,20 +1,17 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using System.Threading.Tasks;
 
 namespace ClashForClaw.Services;
 
 public sealed class AdapterApiClient
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly EmptyRequest EmptyBody = EmptyRequest.Instance;
 
     private readonly HttpClient httpClient = new();
     private string? nonce;
@@ -30,74 +27,82 @@ public sealed class AdapterApiClient
     public string BaseUrl { get; }
 
     public Task<AdapterConfigResponse> GetConfigAsync()
-        => SendAsync<AdapterConfigResponse>(HttpMethod.Get, "/config", null, false);
+        => SendAsync(HttpMethod.Get, "/config", requireNonce: false, AppJsonContext.Default.AdapterConfigResponse);
 
     public Task<AdapterStatusResponse> GetStatusAsync()
-        => SendAsync<AdapterStatusResponse>(HttpMethod.Get, "/status", null, false, requireOkResponse: false);
+        => SendAsync(HttpMethod.Get, "/status", requireNonce: false, AppJsonContext.Default.AdapterStatusResponse, requireOkResponse: false);
 
     public Task<AdapterReloadResponse> ReloadAsync()
-        => SendAsync<AdapterReloadResponse>(HttpMethod.Post, "/config/reload", new { }, true);
+        => SendAsync(HttpMethod.Post, "/config/reload", EmptyBody, requireNonce: true, AppJsonContext.Default.EmptyRequest, AppJsonContext.Default.AdapterReloadResponse);
 
-    public Task SetConfigAsync(Dictionary<string, object> payload)
-        => SendAsync<AdapterBaseResponse>(HttpMethod.Post, "/config", payload, true);
+    public Task SetConfigAsync(ProxyConfigUpdateRequest payload)
+        => SendAsync(HttpMethod.Post, "/config", payload, requireNonce: true, AppJsonContext.Default.ProxyConfigUpdateRequest, AppJsonContext.Default.AdapterBaseResponse);
 
     public Task<AdapterSubscriptionsResponse> GetSubscriptionsAsync()
-        => SendAsync<AdapterSubscriptionsResponse>(HttpMethod.Get, "/subscriptions", null, false);
+        => SendAsync(HttpMethod.Get, "/subscriptions", requireNonce: false, AppJsonContext.Default.AdapterSubscriptionsResponse);
 
     public Task EnableSystemProxyAsync()
-        => SendAsync<AdapterBaseResponse>(HttpMethod.Post, "/system-proxy/enable", new { }, true);
+        => SendAsync(HttpMethod.Post, "/system-proxy/enable", EmptyBody, requireNonce: true, AppJsonContext.Default.EmptyRequest, AppJsonContext.Default.AdapterBaseResponse);
 
     public Task DisableSystemProxyAsync()
-        => SendAsync<AdapterBaseResponse>(HttpMethod.Post, "/system-proxy/disable", new { }, true);
+        => SendAsync(HttpMethod.Post, "/system-proxy/disable", EmptyBody, requireNonce: true, AppJsonContext.Default.EmptyRequest, AppJsonContext.Default.AdapterBaseResponse);
 
     public Task CreateSubscriptionAsync(string url, string? name)
     {
-        var payload = new Dictionary<string, object>
+        var payload = new SubscriptionCreateRequest
         {
-            ["url"] = url,
-            ["name"] = string.IsNullOrWhiteSpace(name) ? string.Empty : name,
+            Url = url,
+            Name = string.IsNullOrWhiteSpace(name) ? string.Empty : name,
         };
-        return SendAsync<AdapterBaseResponse>(HttpMethod.Post, "/subscriptions", payload, true);
+        return SendAsync(HttpMethod.Post, "/subscriptions", payload, requireNonce: true, AppJsonContext.Default.SubscriptionCreateRequest, AppJsonContext.Default.AdapterBaseResponse);
     }
 
     public Task ImportSubscriptionAsync(string path)
     {
-        var payload = new Dictionary<string, object>
+        var payload = new SubscriptionImportRequest
         {
-            ["path"] = path,
+            Path = path,
         };
-        return SendAsync<AdapterBaseResponse>(HttpMethod.Post, "/subscriptions/import", payload, true);
+        return SendAsync(HttpMethod.Post, "/subscriptions/import", payload, requireNonce: true, AppJsonContext.Default.SubscriptionImportRequest, AppJsonContext.Default.AdapterBaseResponse);
     }
 
     public Task ActivateSubscriptionAsync(string id)
-        => SendAsync<AdapterBaseResponse>(HttpMethod.Post, $"/subscriptions/{id}/activate", new { }, true);
+        => SendAsync(HttpMethod.Post, $"/subscriptions/{id}/activate", EmptyBody, requireNonce: true, AppJsonContext.Default.EmptyRequest, AppJsonContext.Default.AdapterBaseResponse);
 
     public Task RefreshSubscriptionAsync(string id)
-        => SendAsync<AdapterBaseResponse>(HttpMethod.Post, $"/subscriptions/{id}/refresh", new { }, true);
+        => SendAsync(HttpMethod.Post, $"/subscriptions/{id}/refresh", EmptyBody, requireNonce: true, AppJsonContext.Default.EmptyRequest, AppJsonContext.Default.AdapterBaseResponse);
 
     public Task RefreshAllSubscriptionsAsync()
-        => SendAsync<AdapterBaseResponse>(HttpMethod.Post, "/subscriptions/refresh", new { }, true);
+        => SendAsync(HttpMethod.Post, "/subscriptions/refresh", EmptyBody, requireNonce: true, AppJsonContext.Default.EmptyRequest, AppJsonContext.Default.AdapterBaseResponse);
 
     public Task RenameSubscriptionAsync(string id, string name)
     {
-        var payload = new Dictionary<string, object>
+        var payload = new SubscriptionRenameRequest
         {
-            ["name"] = name,
+            Name = name,
         };
-        return SendAsync<AdapterBaseResponse>(HttpMethod.Post, $"/subscriptions/{id}/rename", payload, true);
+        return SendAsync(HttpMethod.Post, $"/subscriptions/{id}/rename", payload, requireNonce: true, AppJsonContext.Default.SubscriptionRenameRequest, AppJsonContext.Default.AdapterBaseResponse);
     }
 
     public Task DeleteSubscriptionAsync(string id)
-        => SendAsync<AdapterBaseResponse>(HttpMethod.Delete, $"/subscriptions/{id}", null, true);
+        => SendAsync(HttpMethod.Delete, $"/subscriptions/{id}", requireNonce: true, AppJsonContext.Default.AdapterBaseResponse);
 
     public async Task<string> CopySubscriptionUrlAsync(string id)
     {
-        var resp = await SendAsync<AdapterCopyResponse>(HttpMethod.Post, $"/subscriptions/{id}/copy", new { }, true);
+        var resp = await SendAsync(HttpMethod.Post, $"/subscriptions/{id}/copy", EmptyBody, requireNonce: true, AppJsonContext.Default.EmptyRequest, AppJsonContext.Default.AdapterCopyResponse);
         return resp.Url ?? string.Empty;
     }
 
-    private async Task<T> SendAsync<T>(HttpMethod method, string path, object? payload, bool requireNonce, bool requireOkResponse = true)
-        where T : AdapterBaseResponse
+    private Task<TResponse> SendAsync<TResponse>(HttpMethod method, string path, bool requireNonce, JsonTypeInfo<TResponse> responseTypeInfo, bool requireOkResponse = true)
+        where TResponse : AdapterBaseResponse
+        => SendAsync(method, path, payloadJson: null, requireNonce, responseTypeInfo, requireOkResponse);
+
+    private Task<TResponse> SendAsync<TRequest, TResponse>(HttpMethod method, string path, TRequest payload, bool requireNonce, JsonTypeInfo<TRequest> requestTypeInfo, JsonTypeInfo<TResponse> responseTypeInfo, bool requireOkResponse = true)
+        where TResponse : AdapterBaseResponse
+        => SendAsync(method, path, AppJson.Serialize(payload, requestTypeInfo), requireNonce, responseTypeInfo, requireOkResponse);
+
+    private async Task<TResponse> SendAsync<TResponse>(HttpMethod method, string path, string? payloadJson, bool requireNonce, JsonTypeInfo<TResponse> responseTypeInfo, bool requireOkResponse)
+        where TResponse : AdapterBaseResponse
     {
         var attempt = 0;
         while (true)
@@ -106,11 +111,11 @@ public sealed class AdapterApiClient
             try
             {
                 using var request = new HttpRequestMessage(method, BaseUrl + path);
-                if (payload is not null)
+                if (!string.IsNullOrWhiteSpace(payloadJson))
                 {
-                    var json = JsonSerializer.Serialize(payload);
-                    request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+                    request.Content = new StringContent(payloadJson, Encoding.UTF8, "application/json");
                 }
+
                 if (requireNonce)
                 {
                     await EnsureNonceAsync();
@@ -128,15 +133,17 @@ public sealed class AdapterApiClient
                 }
 
                 var body = await response.Content.ReadAsStringAsync();
-                var parsed = JsonSerializer.Deserialize<T>(body, JsonOptions);
+                var parsed = AppJson.Deserialize(body, responseTypeInfo);
                 if (parsed is null)
                 {
                     throw new InvalidOperationException("Invalid response.");
                 }
+
                 if (requireOkResponse && !parsed.Ok)
                 {
                     throw new InvalidOperationException(string.IsNullOrWhiteSpace(parsed.Error) ? "Request failed." : parsed.Error);
                 }
+
                 return parsed;
             }
             catch (HttpRequestException ex)
@@ -157,11 +164,12 @@ public sealed class AdapterApiClient
             return;
         }
 
-        var response = await SendAsync<AdapterNonceResponse>(HttpMethod.Get, "/nonce", null, false);
+        var response = await SendAsync(HttpMethod.Get, "/nonce", requireNonce: false, AppJsonContext.Default.AdapterNonceResponse);
         if (string.IsNullOrWhiteSpace(response.Nonce))
         {
             throw new InvalidOperationException("本地服务未返回授权令牌。");
         }
+
         nonce = response.Nonce;
     }
 }
@@ -369,4 +377,3 @@ public sealed class AdapterSubscription
     [JsonPropertyName("updated_at")]
     public long UpdatedAt { get; set; }
 }
-

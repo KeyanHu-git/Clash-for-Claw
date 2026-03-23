@@ -6,7 +6,7 @@ namespace ClashForClaw.Services;
 public sealed class CliRunner
 {
     private Process? process;
-    private string? lastCommand;
+    private string? lastLaunchSignature;
 
     public bool EnsureRunning(AppSettings settings, bool force = false)
     {
@@ -18,31 +18,33 @@ public sealed class CliRunner
 
         var cliPath = AppPaths.ResolveCliPath(settings.CliPath);
         var args = settings.CliArgs ?? string.Empty;
-        var command = $"\"{cliPath}\" {args}".Trim();
+        var logDirectory = AppPaths.ResolveDesktopLogDirectory(settings.LogDirectory);
+        var launchSignature = BuildLaunchSignature(cliPath, args, logDirectory);
 
-        if (process is not null && !process.HasExited && string.Equals(lastCommand, command, StringComparison.Ordinal))
+        if (process is not null && !process.HasExited && string.Equals(lastLaunchSignature, launchSignature, StringComparison.Ordinal))
         {
             return true;
         }
 
         Stop();
-        return Start(cliPath, args, trackProcess: true);
+        return Start(cliPath, args, logDirectory, trackProcess: true);
     }
 
     public bool TryStartOnDemand(AppSettings settings)
     {
         var cliPath = AppPaths.ResolveCliPath(settings.CliPath);
         var args = settings.CliArgs ?? string.Empty;
-        var command = BuildCommand(cliPath, args);
+        var logDirectory = AppPaths.ResolveDesktopLogDirectory(settings.LogDirectory);
+        var launchSignature = BuildLaunchSignature(cliPath, args, logDirectory);
 
         if (process is not null
             && !process.HasExited
-            && string.Equals(lastCommand, command, StringComparison.Ordinal))
+            && string.Equals(lastLaunchSignature, launchSignature, StringComparison.Ordinal))
         {
             return true;
         }
 
-        return Start(cliPath, args, trackProcess: false);
+        return Start(cliPath, args, logDirectory, trackProcess: false);
     }
 
     public void Stop()
@@ -60,13 +62,13 @@ public sealed class CliRunner
         }
 
         process = null;
-        lastCommand = null;
+        lastLaunchSignature = null;
     }
 
-    private static string BuildCommand(string cliPath, string args)
-        => $"\"{cliPath}\" {args}".Trim();
+    private static string BuildLaunchSignature(string cliPath, string args, string logDirectory)
+        => $"\"{cliPath}\" {args} | logdir=\"{logDirectory}\"".Trim();
 
-    private bool Start(string cliPath, string args, bool trackProcess)
+    private bool Start(string cliPath, string args, string logDirectory, bool trackProcess)
     {
         if (!File.Exists(cliPath))
         {
@@ -82,6 +84,7 @@ public sealed class CliRunner
             UseShellExecute = false,
             WindowStyle = ProcessWindowStyle.Hidden,
         };
+        startInfo.Environment[AppPaths.LogDirectoryEnvVar] = logDirectory;
 
         try
         {
@@ -89,7 +92,7 @@ public sealed class CliRunner
             if (trackProcess)
             {
                 process = started;
-                lastCommand = BuildCommand(cliPath, args);
+                lastLaunchSignature = BuildLaunchSignature(cliPath, args, logDirectory);
             }
             return started is not null;
         }
@@ -98,7 +101,7 @@ public sealed class CliRunner
             if (trackProcess)
             {
                 process = null;
-                lastCommand = null;
+                lastLaunchSignature = null;
             }
             return false;
         }
