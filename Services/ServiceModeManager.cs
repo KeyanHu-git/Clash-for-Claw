@@ -34,6 +34,7 @@ public sealed class ServiceModeResult
     public bool ServiceStarted { get; init; }
     public bool FallbackScheduled { get; init; }
     public bool DesktopFallbackStarted { get; init; }
+    public bool SuppressDesktopFallback { get; init; }
     public string Message { get; init; } = string.Empty;
     public string Title { get; init; } = string.Empty;
 }
@@ -119,6 +120,7 @@ public static class ServiceModeManager
                 Failed = true,
                 Title = "无法启用 Windows 服务模式",
                 Message = BuildEnableFailureMessage(start),
+                SuppressDesktopFallback = IsServicePortFailure(start),
             };
         }
 
@@ -490,6 +492,16 @@ public static class ServiceModeManager
         }
 
         return false;
+    }
+
+    private static bool IsServicePortFailure(ServiceCommandResponse response)
+    {
+        var detail = ExtractError(response, string.Empty);
+        return ContainsKnownMessage(detail, "service_port_")
+            || ContainsKnownMessage(detail, "kill_process_")
+            || ContainsKnownMessage(detail, "wait_process_")
+            || ContainsKnownMessage(detail, "process_exit_timeout")
+            || ContainsKnownMessage(detail, "service_port_release_timeout");
     }
 
     private static bool TryExtractPortAndPid(string detail, out int port, out int pid)

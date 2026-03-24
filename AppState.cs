@@ -377,7 +377,7 @@ public static class AppState
                 RefreshServiceModeState();
                 ApplySettings();
 
-                if (!IsServiceModeEnabled)
+                if (!IsServiceModeEnabled && !enableResult.SuppressDesktopFallback)
                 {
                     if (await IsBackendReachableAsync())
                     {

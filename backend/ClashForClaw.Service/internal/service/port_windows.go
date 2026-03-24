@@ -69,17 +69,27 @@ func ensureServicePortFree(serviceExe string, configPath string) error {
 }
 
 func processMatchesServiceExecutable(pid int, serviceExe string) (bool, error) {
-	imagePath, err := processImagePath(pid)
-	if err == nil {
-		return sameExecutablePath(imagePath, serviceExe), nil
+	expectedName := filepath.Base(serviceExe)
+	imagePath, pathErr := processImagePath(pid)
+	if pathErr == nil {
+		if sameExecutablePath(imagePath, serviceExe) {
+			return true, nil
+		}
+
+		if strings.EqualFold(filepath.Base(imagePath), expectedName) {
+			return true, nil
+		}
 	}
 
 	imageName, nameErr := processImageName(pid)
 	if nameErr != nil {
-		return false, err
+		if pathErr != nil {
+			return false, pathErr
+		}
+		return false, nameErr
 	}
 
-	return strings.EqualFold(imageName, filepath.Base(serviceExe)), nil
+	return strings.EqualFold(imageName, expectedName), nil
 }
 
 func serviceHTTPPort(configPath string) (int, error) {

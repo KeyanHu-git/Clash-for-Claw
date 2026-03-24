@@ -34,6 +34,20 @@ func TestEnsureServicePortFreeStopsMatchingOwner(t *testing.T) {
 	}
 }
 
+func TestEnsureServicePortFreeStopsMatchingOwnerFromDifferentPath(t *testing.T) {
+	port := 13133
+	ownerExe := buildPortOwnerHelperNamed(t, filepath.Join(t.TempDir(), "owner", "ClashForClaw.Service.exe"))
+	cmd := startPortOwnerHelper(t, ownerExe, port)
+
+	expectedExe := buildPortOwnerHelperNamed(t, filepath.Join(t.TempDir(), "expected", "ClashForClaw.Service.exe"))
+	cfgPath := writeServicePortConfig(t, port)
+	if err := ensureServicePortFree(expectedExe, cfgPath); err != nil {
+		t.Fatalf("ensureServicePortFree returned error for same-name different-path owner: %v", err)
+	}
+
+	waitForProcessExit(t, cmd.Process.Pid, 3*time.Second)
+}
+
 func TestEnsureServicePortFreeKeepsForeignOwner(t *testing.T) {
 	port := 13132
 	cmd := startPortOwnerHelper(t, buildPortOwnerHelper(t), port)
@@ -53,10 +67,18 @@ func TestEnsureServicePortFreeKeepsForeignOwner(t *testing.T) {
 
 func buildPortOwnerHelper(t *testing.T) string {
 	t.Helper()
+	return buildPortOwnerHelperNamed(t, filepath.Join(t.TempDir(), "helper.exe"))
+}
 
-	dir := t.TempDir()
+func buildPortOwnerHelperNamed(t *testing.T, helperExe string) string {
+	t.Helper()
+
+	dir := filepath.Dir(helperExe)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("os.MkdirAll failed: %v", err)
+	}
+
 	sourcePath := filepath.Join(dir, "main.go")
-	helperExe := filepath.Join(dir, "helper.exe")
 	source := `package main
 
 import (
