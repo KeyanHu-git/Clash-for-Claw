@@ -371,27 +371,7 @@ public static class AppState
             isSwitchingToServiceMode = true;
             try
             {
-                var backendReleased = await CliRunner.StopManagedBackendAsync(SettingsStore.Current, AdapterPort, ServiceModeBackendDrainTimeout);
-                if (!backendReleased)
-                {
-                    RefreshServiceModeState();
-                    ApplySettings();
-
-                    var blockedResult = new ServiceModeResult
-                    {
-                        Failed = true,
-                        Title = "无法启用 Windows 服务模式",
-                        Message = "桌面后台未能及时释放本地控制端口 13000，请稍后重试；如果仍然失败，请结束残留的 ClashForClaw.Service.exe 进程后再启用。",
-                    };
-
-                    if (await IsBackendReachableAsync())
-                    {
-                        blockedResult = ServiceModeManager.WithDesktopFallback(blockedResult);
-                    }
-
-                    ApplyServiceModeResult(blockedResult, true);
-                    return blockedResult;
-                }
+                _ = await CliRunner.StopManagedBackendAsync(SettingsStore.Current, AdapterPort, ServiceModeBackendDrainTimeout);
 
                 var enableResult = await Task.Run(() => ServiceModeManager.Enable(SettingsStore.Current));
                 RefreshServiceModeState();
@@ -399,10 +379,17 @@ public static class AppState
 
                 if (!IsServiceModeEnabled)
                 {
-                    var desktopFallbackStarted = CliRunner.EnsureRunning(SettingsStore.Current, force: true);
-                    if (desktopFallbackStarted)
+                    if (await IsBackendReachableAsync())
                     {
                         enableResult = ServiceModeManager.WithDesktopFallback(enableResult);
+                    }
+                    else
+                    {
+                        var desktopFallbackStarted = CliRunner.EnsureRunning(SettingsStore.Current, force: true);
+                        if (desktopFallbackStarted)
+                        {
+                            enableResult = ServiceModeManager.WithDesktopFallback(enableResult);
+                        }
                     }
                 }
 

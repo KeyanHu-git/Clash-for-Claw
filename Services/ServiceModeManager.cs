@@ -406,6 +406,11 @@ public static class ServiceModeManager
     private static string BuildEnableFailureMessage(ServiceCommandResponse result)
     {
         var detail = ExtractError(result, "注册 Windows 服务失败。");
+        if (TryDescribeServicePortFailure(detail, out var portMessage))
+        {
+            return portMessage;
+        }
+
         if (ContainsKnownMessage(result.Reason, "elevation_cancelled"))
         {
             return "已取消管理员授权，Windows 服务模式未启用。";
@@ -456,5 +461,57 @@ public static class ServiceModeManager
         }
 
         return detail;
+    }
+
+    private static bool TryDescribeServicePortFailure(string detail, out string message)
+    {
+        message = string.Empty;
+        if (string.IsNullOrWhiteSpace(detail))
+        {
+            return false;
+        }
+
+        if (TryExtractPortAndPid(detail, out var port, out var pid))
+        {
+            message = $"本地控制端口 {port} 仍被残留后台占用（PID {pid}），服务接管前已自动尝试清理但没有完成。请重试一次；如果仍失败，请重启系统后再启用 Windows 服务模式。";
+            return true;
+        }
+
+        if (ContainsKnownMessage(detail, "service_port_release_timeout"))
+        {
+            message = "本地控制端口 13000 在自动清理后仍未及时释放。请稍后重试；如果仍失败，请重启系统后再启用 Windows 服务模式。";
+            return true;
+        }
+
+        if (ContainsKnownMessage(detail, "service_port_owner_path_"))
+        {
+            message = "检测到本地控制端口仍被旧后台占用，但当前无法完整读取占用进程信息。请重试一次；如果仍失败，请重启系统后再启用 Windows 服务模式。";
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryExtractPortAndPid(string detail, out int port, out int pid)
+    {
+        port = 0;
+        pid = 0;
+        const string marker = "service_port_";
+        var index = detail.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        var remainder = detail[(index + marker.Length)..];
+        var separator = remainder.IndexOf("_in_use_by_", StringComparison.OrdinalIgnoreCase);
+        if (separator <= 0)
+        {
+            return false;
+        }
+
+        var portText = remainder[..separator];
+        var pidText = remainder[(separator + "_in_use_by_".Length)..];
+        return int.TryParse(portText, out port) && int.TryParse(pidText, out pid) && port > 0 && pid > 0;
     }
 }

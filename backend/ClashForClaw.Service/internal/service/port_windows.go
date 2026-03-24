@@ -41,7 +41,7 @@ func ensureServicePortFree(serviceExe string, configPath string) error {
 			return nil
 		}
 
-		imagePath, err := processImagePath(pid)
+		matches, err := processMatchesServiceExecutable(pid, serviceExe)
 		if err != nil {
 			if !isProcessRunning(pid) {
 				time.Sleep(150 * time.Millisecond)
@@ -49,8 +49,7 @@ func ensureServicePortFree(serviceExe string, configPath string) error {
 			}
 			return fmt.Errorf("service_port_owner_path_%d: %w", pid, err)
 		}
-
-		if !sameExecutablePath(imagePath, serviceExe) {
+		if !matches {
 			return fmt.Errorf("service_port_%d_in_use_by_%d", port, pid)
 		}
 
@@ -67,6 +66,20 @@ func ensureServicePortFree(serviceExe string, configPath string) error {
 	}
 
 	return fmt.Errorf("service_port_release_timeout")
+}
+
+func processMatchesServiceExecutable(pid int, serviceExe string) (bool, error) {
+	imagePath, err := processImagePath(pid)
+	if err == nil {
+		return sameExecutablePath(imagePath, serviceExe), nil
+	}
+
+	imageName, nameErr := processImageName(pid)
+	if nameErr != nil {
+		return false, err
+	}
+
+	return strings.EqualFold(imageName, filepath.Base(serviceExe)), nil
 }
 
 func serviceHTTPPort(configPath string) (int, error) {
@@ -150,6 +163,29 @@ func processImagePath(pid int) (string, error) {
 		return "", err
 	}
 	return windows.UTF16ToString(buf[:size]), nil
+}
+
+func processImageName(pid int) (string, error) {
+	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/FO", "CSV", "/NH")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	line := strings.TrimSpace(string(output))
+	if line == "" || strings.HasPrefix(line, "INFO:") {
+		return "", fmt.Errorf("tasklist_missing_%d", pid)
+	}
+
+	line = strings.Trim(line, "\r\n")
+	if strings.HasPrefix(line, "\"") && strings.Contains(line, "\",\"") {
+		parts := strings.Split(line, "\",\"")
+		if len(parts) > 0 {
+			return strings.Trim(parts[0], "\""), nil
+		}
+	}
+
+	return "", fmt.Errorf("tasklist_parse_%d", pid)
 }
 
 func isProcessRunning(pid int) bool {
