@@ -133,6 +133,9 @@ func (m *Manager) StartWithMode() (Mode, error) {
 			}
 			return ModeService, err
 		}
+		if err := ensureServicePortFree(m.exe, m.servicePaths.ConfigPath); err != nil {
+			return ModeService, err
+		}
 		if err := m.startService(); err != nil {
 			if hasAccessDenied(err) {
 				return ModeService, wrapCommandReason(ReasonServiceStartRequiresElevation, err)
@@ -166,7 +169,10 @@ func (m *Manager) Stop() error {
 		if status == service.StatusStopped {
 			return nil
 		}
-		return m.stopService()
+		if err := m.stopService(); err != nil {
+			return err
+		}
+		return m.waitForServiceStopped()
 	case taskRegistered:
 		return stopTask()
 	default:
@@ -311,6 +317,23 @@ func (m *Manager) waitForServiceRunning() error {
 	}
 
 	return fmt.Errorf("%s: service failed to remain running after start", ReasonStartFailed)
+}
+
+func (m *Manager) waitForServiceStopped() error {
+	deadline := time.Now().Add(startSettleTimeout)
+
+	for time.Now().Before(deadline) {
+		mode, status, _, err := m.currentRegistrations()
+		if err != nil {
+			return err
+		}
+		if mode != ModeService || status == service.StatusStopped {
+			return nil
+		}
+		time.Sleep(startPollInterval)
+	}
+
+	return fmt.Errorf("%s: service failed to stop cleanly", ReasonStopFailed)
 }
 
 func (m *Manager) cleanupLegacyArtifacts() {

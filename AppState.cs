@@ -13,7 +13,10 @@ namespace ClashForClaw;
 
 public static class AppState
 {
+    private const int AdapterPort = 13000;
+    private static readonly TimeSpan ServiceModeBackendDrainTimeout = TimeSpan.FromSeconds(8);
     private static bool isApplyingSettings;
+    private static bool isSwitchingToServiceMode;
     private static DispatcherQueue? dispatcherQueue;
     private static DispatcherQueueTimer? statusTimer;
     private static bool isStatusPolling;
@@ -55,7 +58,7 @@ public static class AppState
             // Fall through and attempt a local bootstrap below.
         }
 
-        if (IsServiceModeEnabled)
+        if (IsServiceModeEnabled || isSwitchingToServiceMode)
         {
             return false;
         }
@@ -71,6 +74,11 @@ public static class AppState
             catch
             {
                 // The service is still down; try the local CLI path once.
+            }
+
+            if (IsServiceModeEnabled || isSwitchingToServiceMode)
+            {
+                return false;
             }
 
             if (!CliRunner.TryStartOnDemand(SettingsStore.Current))
@@ -108,13 +116,16 @@ public static class AppState
 
         StartupManager.ApplyAutoStart(SettingsStore.Current, IsServiceModeEnabled);
 
-        if (!IsServiceModeEnabled)
+        if (!isSwitchingToServiceMode)
         {
-            CliRunner.EnsureRunning(SettingsStore.Current);
-        }
-        else
-        {
-            CliRunner.Stop();
+            if (!IsServiceModeEnabled)
+            {
+                CliRunner.EnsureRunning(SettingsStore.Current);
+            }
+            else
+            {
+                CliRunner.Stop();
+            }
         }
 
         ThemeManager.ApplyTheme(App.MainWindow, SettingsStore.Current.ThemeMode);
@@ -357,22 +368,51 @@ public static class AppState
     {
         if (enabled)
         {
-            CliRunner.Stop();
-            var enableResult = await Task.Run(() => ServiceModeManager.Enable(SettingsStore.Current));
-            RefreshServiceModeState();
-            ApplySettings();
-
-            if (!IsServiceModeEnabled)
+            isSwitchingToServiceMode = true;
+            try
             {
-                var desktopFallbackStarted = CliRunner.EnsureRunning(SettingsStore.Current, force: true);
-                if (desktopFallbackStarted)
+                var backendReleased = await CliRunner.StopManagedBackendAsync(SettingsStore.Current, AdapterPort, ServiceModeBackendDrainTimeout);
+                if (!backendReleased)
                 {
-                    enableResult = ServiceModeManager.WithDesktopFallback(enableResult);
-                }
-            }
+                    RefreshServiceModeState();
+                    ApplySettings();
 
-            ApplyServiceModeResult(enableResult, true);
-            return enableResult;
+                    var blockedResult = new ServiceModeResult
+                    {
+                        Failed = true,
+                        Title = "无法启用 Windows 服务模式",
+                        Message = "桌面后台未能及时释放本地控制端口 13000，请稍后重试；如果仍然失败，请结束残留的 ClashForClaw.Service.exe 进程后再启用。",
+                    };
+
+                    if (await IsBackendReachableAsync())
+                    {
+                        blockedResult = ServiceModeManager.WithDesktopFallback(blockedResult);
+                    }
+
+                    ApplyServiceModeResult(blockedResult, true);
+                    return blockedResult;
+                }
+
+                var enableResult = await Task.Run(() => ServiceModeManager.Enable(SettingsStore.Current));
+                RefreshServiceModeState();
+                ApplySettings();
+
+                if (!IsServiceModeEnabled)
+                {
+                    var desktopFallbackStarted = CliRunner.EnsureRunning(SettingsStore.Current, force: true);
+                    if (desktopFallbackStarted)
+                    {
+                        enableResult = ServiceModeManager.WithDesktopFallback(enableResult);
+                    }
+                }
+
+                ApplyServiceModeResult(enableResult, true);
+                return enableResult;
+            }
+            finally
+            {
+                isSwitchingToServiceMode = false;
+            }
         }
 
         var disableResult = await Task.Run(() => ServiceModeManager.Disable(SettingsStore.Current));
@@ -410,9 +450,22 @@ public static class AppState
             ? InfoBarSeverity.Success
             : result.FallbackScheduled || result.DesktopFallbackStarted
                 ? InfoBarSeverity.Warning
-                : enabled
-                    ? InfoBarSeverity.Error
-                    : InfoBarSeverity.Informational;
+                    : enabled
+                        ? InfoBarSeverity.Error
+                        : InfoBarSeverity.Informational;
+    }
+
+    private static async Task<bool> IsBackendReachableAsync()
+    {
+        try
+        {
+            await Api.GetStatusAsync();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
 }

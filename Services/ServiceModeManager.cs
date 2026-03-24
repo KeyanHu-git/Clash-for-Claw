@@ -1,7 +1,5 @@
-using System;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
 using System.Text.Json;
 using ClashForClaw.Models;
 
@@ -51,7 +49,7 @@ public static class ServiceModeManager
             {
                 Error = "未找到内置服务组件。",
                 Reason = "cli_missing",
-                Hint = "请确认发布目录中的 ClashForClaw.Service.exe 存在且可访问。",
+                Hint = "请确认发布目录中包含 ClashForClaw.Service.exe。",
             };
         }
 
@@ -146,7 +144,7 @@ public static class ServiceModeManager
             return new ServiceModeResult
             {
                 Title = "Windows 服务模式已关闭",
-                Message = "未找到内置服务组件，已按桌面后台模式处理。",
+                Message = "未找到内置服务组件，当前已按桌面后台模式处理。",
             };
         }
 
@@ -160,7 +158,7 @@ public static class ServiceModeManager
             };
         }
 
-        _ = RunServiceCommand(cliPath, "stop");
+        var stop = RunServiceCommand(cliPath, "stop");
         var uninstall = RunServiceCommand(cliPath, "uninstall");
         var actual = Query(settings);
 
@@ -170,7 +168,7 @@ public static class ServiceModeManager
             {
                 Failed = true,
                 Title = "关闭 Windows 服务模式失败",
-                Message = ExtractError(uninstall, "后台托管模式未能卸载，请检查当前账户权限。"),
+                Message = BuildDisableFailureMessage(stop, uninstall),
             };
         }
 
@@ -252,7 +250,7 @@ public static class ServiceModeManager
             {
                 Title = "未注册为 Windows 服务，已回退为计划任务",
                 FallbackScheduled = true,
-                Message = $"当前未能注册 Windows 服务，系统已回退为计划任务以维持后台运行。这不等同于 Windows 服务模式；若要注册真正的 Windows 服务，请接受系统提权或使用管理员权限重新启用。数据目录：{AppPaths.ServiceBaseDirectory}",
+                Message = $"当前未能注册 Windows 服务，系统已回退为计划任务以维持后台运行。这并不等同于 Windows 服务模式；若要注册真正的 Windows 服务，请接受系统提权或使用管理员权限重新启用。数据目录：{AppPaths.ServiceBaseDirectory}",
             };
         }
 
@@ -260,7 +258,7 @@ public static class ServiceModeManager
         {
             Title = "已切换到 Windows 服务模式",
             ServiceStarted = true,
-            Message = $"当前已注册为 Windows 服务，由 LocalService 账户接管后台运行。前台窗口与托盘可以关闭，后台仍会持续运行。数据目录：{AppPaths.ServiceBaseDirectory}",
+            Message = $"当前已注册为 Windows 服务，由 LocalService 账户接管后台运行。前台窗口与托盘可以关闭，后台仍会继续运行。数据目录：{AppPaths.ServiceBaseDirectory}",
         };
     }
 
@@ -290,7 +288,7 @@ public static class ServiceModeManager
     }
 
     private static bool ContainsKnownMessage(string text, string token)
-        => text.Contains(token, StringComparison.OrdinalIgnoreCase);
+        => !string.IsNullOrWhiteSpace(text) && text.Contains(token, StringComparison.OrdinalIgnoreCase);
 
     private static bool ShouldRetryElevated(string command, ServiceCommandResponse response)
     {
@@ -305,7 +303,9 @@ public static class ServiceModeManager
         }
 
         return ContainsKnownMessage(response.Reason, "requires_elevation")
+            || ContainsKnownMessage(response.Reason, "access_denied")
             || ContainsKnownMessage(response.Error, "Access is denied")
+            || ContainsKnownMessage(response.Error, "拒绝访问")
             || ContainsKnownMessage(response.Error, "service_start_requires_elevation");
     }
 
@@ -359,7 +359,9 @@ public static class ServiceModeManager
                 Action = command,
                 Error = "elevation_cancelled",
                 Reason = "elevation_cancelled",
-                Hint = "Accept the UAC prompt to continue enabling Windows service mode.",
+                Hint = command is "stop" or "uninstall"
+                    ? "Accept the UAC prompt to disable Windows service mode."
+                    : "Accept the UAC prompt to continue enabling Windows service mode.",
                 RequiresElevation = true,
             };
         }
@@ -411,14 +413,46 @@ public static class ServiceModeManager
 
         if (result.RequiresElevation
             || ContainsKnownMessage(result.Reason, "install_requires_elevation_or_task_scheduler_access")
-            || ContainsKnownMessage(detail, "Access is denied"))
+            || ContainsKnownMessage(detail, "Access is denied")
+            || ContainsKnownMessage(detail, "拒绝访问"))
         {
-            return "当前操作需要管理员权限。应用会弹出系统提权窗口；如果取消 UAC，Windows 服务模式就不会启动。";
+            return "当前操作需要管理员权限。应用会弹出系统提权窗口；如果取消 UAC，Windows 服务模式不会启用。";
         }
 
         if (!string.IsNullOrWhiteSpace(result.Hint))
         {
             return $"{detail}\n\n{result.Hint}";
+        }
+
+        return detail;
+    }
+
+    private static string BuildDisableFailureMessage(ServiceCommandResponse stop, ServiceCommandResponse uninstall)
+    {
+        var detail = ExtractError(uninstall, ExtractError(stop, "关闭后台托管模式失败。"));
+        if (ContainsKnownMessage(stop.Reason, "elevation_cancelled") || ContainsKnownMessage(uninstall.Reason, "elevation_cancelled"))
+        {
+            return "已取消管理员授权，Windows 服务模式未关闭。";
+        }
+
+        if (stop.RequiresElevation
+            || uninstall.RequiresElevation
+            || ContainsKnownMessage(stop.Reason, "access_denied")
+            || ContainsKnownMessage(uninstall.Reason, "access_denied")
+            || ContainsKnownMessage(detail, "Access is denied")
+            || ContainsKnownMessage(detail, "拒绝访问"))
+        {
+            return "当前操作需要管理员权限。应用会弹出系统提权窗口；如果取消 UAC，Windows 服务模式不会关闭。";
+        }
+
+        if (!string.IsNullOrWhiteSpace(uninstall.Hint))
+        {
+            return $"{detail}\n\n{uninstall.Hint}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(stop.Hint))
+        {
+            return $"{detail}\n\n{stop.Hint}";
         }
 
         return detail;
