@@ -17,6 +17,7 @@ public static class AppState
     private static readonly TimeSpan ServiceModeBackendDrainTimeout = TimeSpan.FromSeconds(8);
     private static bool isApplyingSettings;
     private static bool isSwitchingToServiceMode;
+    private static bool isExitRequested;
     private static DispatcherQueue? dispatcherQueue;
     private static DispatcherQueueTimer? statusTimer;
     private static bool isStatusPolling;
@@ -48,6 +49,11 @@ public static class AppState
 
     public static async Task<bool> EnsureBackendReadyAsync()
     {
+        if (isExitRequested)
+        {
+            return false;
+        }
+
         try
         {
             await Api.GetStatusAsync();
@@ -58,7 +64,7 @@ public static class AppState
             // Fall through and attempt a local bootstrap below.
         }
 
-        if (IsServiceModeEnabled || isSwitchingToServiceMode)
+        if (IsServiceModeEnabled || isSwitchingToServiceMode || isExitRequested)
         {
             return false;
         }
@@ -76,12 +82,12 @@ public static class AppState
                 // The service is still down; try the local CLI path once.
             }
 
-            if (IsServiceModeEnabled || isSwitchingToServiceMode)
+            if (IsServiceModeEnabled || isSwitchingToServiceMode || isExitRequested)
             {
                 return false;
             }
 
-            if (!CliRunner.TryStartOnDemand(SettingsStore.Current))
+            if (!CliRunner.TryStartOnDemand(SettingsStore.Current, AdapterPort))
             {
                 return false;
             }
@@ -118,9 +124,13 @@ public static class AppState
 
         if (!isSwitchingToServiceMode)
         {
-            if (!IsServiceModeEnabled)
+            if (isExitRequested)
             {
-                CliRunner.EnsureRunning(SettingsStore.Current);
+                CliRunner.Stop();
+            }
+            else if (!IsServiceModeEnabled)
+            {
+                CliRunner.EnsureRunning(SettingsStore.Current, AdapterPort);
             }
             else
             {
@@ -307,9 +317,13 @@ public static class AppState
 
     public static void RequestExit()
     {
-        AllowClose = true;
-        Tray.Dispose();
-        Application.Current.Exit();
+        if (isExitRequested)
+        {
+            return;
+        }
+
+        isExitRequested = true;
+        _ = RequestExitAsync();
     }
 
     public static void ShowWindow(Window window)
@@ -371,8 +385,13 @@ public static class AppState
             isSwitchingToServiceMode = true;
             try
             {
-                await TryRequestDesktopBackendShutdownAsync(ServiceModeBackendDrainTimeout);
-                _ = await CliRunner.StopManagedBackendAsync(SettingsStore.Current, AdapterPort, ServiceModeBackendDrainTimeout);
+                var desktopBackendStopped = await DrainDesktopBackendAsync(ServiceModeBackendDrainTimeout);
+                if (!desktopBackendStopped)
+                {
+                    var drainFailure = BuildDesktopBackendDrainFailureResult();
+                    ApplyServiceModeResult(drainFailure, true);
+                    return drainFailure;
+                }
 
                 var enableResult = await Task.Run(() => ServiceModeManager.Enable(SettingsStore.Current));
                 RefreshServiceModeState();
@@ -386,7 +405,7 @@ public static class AppState
                     }
                     else
                     {
-                        var desktopFallbackStarted = CliRunner.EnsureRunning(SettingsStore.Current, force: true);
+                        var desktopFallbackStarted = CliRunner.EnsureRunning(SettingsStore.Current, AdapterPort, force: true);
                         if (desktopFallbackStarted)
                         {
                             enableResult = ServiceModeManager.WithDesktopFallback(enableResult);
@@ -456,6 +475,53 @@ public static class AppState
         }
     }
 
+    private static async Task RequestExitAsync()
+    {
+        var shouldExit = true;
+        try
+        {
+            if (!IsServiceModeEnabled)
+            {
+                shouldExit = await DrainDesktopBackendAsync(ServiceModeBackendDrainTimeout);
+            }
+        }
+        catch
+        {
+            shouldExit = false;
+        }
+
+        if (!shouldExit)
+        {
+            if (dispatcherQueue is not null)
+            {
+                dispatcherQueue.TryEnqueue(ReportExitDrainFailure);
+            }
+            else
+            {
+                ReportExitDrainFailure();
+            }
+
+            return;
+        }
+
+        AllowClose = true;
+        Tray.Dispose();
+        if (dispatcherQueue is not null)
+        {
+            dispatcherQueue.TryEnqueue(() => Application.Current.Exit());
+        }
+        else
+        {
+            Application.Current.Exit();
+        }
+    }
+
+    private static async Task<bool> DrainDesktopBackendAsync(TimeSpan timeout)
+    {
+        await TryRequestDesktopBackendShutdownAsync(timeout);
+        return await CliRunner.StopManagedBackendAsync(SettingsStore.Current, AdapterPort, timeout);
+    }
+
     private static async Task TryRequestDesktopBackendShutdownAsync(TimeSpan timeout)
     {
         try
@@ -476,6 +542,28 @@ public static class AppState
             }
 
             await Task.Delay(150);
+        }
+    }
+
+    private static ServiceModeResult BuildDesktopBackendDrainFailureResult()
+    {
+        return new ServiceModeResult
+        {
+            Failed = true,
+            Title = "无法切换到 Windows 服务模式",
+            Message = "当前桌面后台仍在退出中，控制端口尚未释放。请稍后重试。",
+            SuppressDesktopFallback = true,
+        };
+    }
+
+    private static void ReportExitDrainFailure()
+    {
+        isExitRequested = false;
+        ViewModel.ConnectionStatusLevel = StatusLevel.Warning;
+        ViewModel.ConnectionDetail = "后台仍在退出中，已取消关闭。请稍后重试。";
+        if (App.MainWindow is Window window)
+        {
+            ShowWindow(window);
         }
     }
 

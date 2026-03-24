@@ -58,11 +58,11 @@ func (m *Manager) Install() (Mode, error) {
 	if err != nil {
 		return "", err
 	}
-	if mode != ModeNone {
+	if mode == ModeService {
+		if taskRegistered {
+			_ = uninstallTask()
+		}
 		return mode, nil
-	}
-	if taskRegistered {
-		return ModeTask, nil
 	}
 
 	if err := m.prepareServiceBase(); err != nil {
@@ -70,13 +70,23 @@ func (m *Manager) Install() (Mode, error) {
 	}
 	serviceErr := m.installService()
 	if serviceErr == nil {
+		if taskRegistered {
+			_ = uninstallTask()
+		}
 		m.cleanupLegacyArtifacts()
 		return ModeService, nil
 	}
 	mode, err = m.detectInstalledMode()
-	if err == nil && mode != ModeNone {
+	if err == nil && mode == ModeService {
+		if taskRegistered {
+			_ = uninstallTask()
+		}
 		m.cleanupLegacyArtifacts()
 		return mode, nil
+	}
+	if taskRegistered {
+		m.cleanupLegacyArtifacts()
+		return ModeTask, nil
 	}
 	taskErr := installTask(m.exe, m.userPaths.BaseDir)
 	if taskErr == nil {

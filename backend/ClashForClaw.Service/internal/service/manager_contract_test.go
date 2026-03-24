@@ -135,10 +135,43 @@ func TestDetectInstalledModeReturnsTaskWhenOnlyTaskExists(t *testing.T) {
 	}
 }
 
-func TestInstallReturnsExistingTaskModeWithoutTouchingInstallPath(t *testing.T) {
+func TestInstallPromotesExistingTaskToServiceWhenServiceAppearsAfterInstallAttempt(t *testing.T) {
 	withFakeWindowsTools(t,
 		fakeToolConfig{
-			Default: fakeServiceMissing(),
+			Responses: []fakeToolResponse{
+				fakeServiceMissing(),
+				fakeServiceRegistered(service.StatusStopped),
+			},
+			Default: fakeToolResponse{},
+		},
+		fakeToolConfig{
+			Responses: []fakeToolResponse{
+				fakeTaskRegistered(),
+				{},
+			},
+			Default: fakeTaskMissing(),
+		},
+	)
+
+	mode, err := newTestManager().Install()
+	if err != nil {
+		t.Fatalf("Install returned error: %v", err)
+	}
+	if mode != ModeService {
+		t.Fatalf("Install = %q, want %q", mode, ModeService)
+	}
+}
+
+func TestInstallKeepsExistingTaskModeWhenServiceInstallFails(t *testing.T) {
+	withFakeWindowsTools(t,
+		fakeToolConfig{
+			Responses: []fakeToolResponse{
+				fakeServiceMissing(),
+			},
+			Default: fakeToolResponse{
+				ExitCode: 5,
+				Output:   "Access is denied.",
+			},
 		},
 		fakeToolConfig{
 			Default: fakeTaskRegistered(),

@@ -12,6 +12,7 @@ public partial class SettingsPage : Page
     private bool isLoaded;
     private bool isApplyingConfig;
     private bool isApplyingServiceMode;
+    private bool isServiceDialogOpen;
 
     public MainViewModel ViewModel { get; } = AppState.ViewModel;
     private AdapterApiClient Api => AppState.Api;
@@ -199,41 +200,57 @@ public partial class SettingsPage : Page
 
     private async Task<bool> ConfirmEnableServiceModeAsync()
     {
-        if (XamlRoot is null)
+        if (XamlRoot is null || isServiceDialogOpen)
         {
             return false;
         }
 
-        var dialog = new ContentDialog
+        isServiceDialogOpen = true;
+        try
         {
-            XamlRoot = XamlRoot,
-            Title = "切换到 Windows 服务模式？",
-            PrimaryButtonText = "立即注册",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Primary,
-            Content = "启用后会尝试注册 Windows 服务。只有注册成功后前台才会退出；如果回退为计划任务，会保留界面并提示原因。",
-        };
+            var dialog = new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = "切换到 Windows 服务模式？",
+                PrimaryButtonText = "立即注册",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Primary,
+                Content = "启用后会尝试注册 Windows 服务。只有注册成功后前台才会退出；如果回退为计划任务，会保留界面并提示原因。",
+            };
 
-        var result = await dialog.ShowAsync();
-        return result == ContentDialogResult.Primary;
+            var result = await dialog.ShowAsync();
+            return result == ContentDialogResult.Primary;
+        }
+        finally
+        {
+            isServiceDialogOpen = false;
+        }
     }
 
     private async Task ShowServiceModeResultAsync(ServiceModeResult result, bool enabling, bool succeeded)
     {
-        if (XamlRoot is null)
+        if (XamlRoot is null || isServiceDialogOpen)
         {
             return;
         }
 
-        var dialog = new ContentDialog
+        isServiceDialogOpen = true;
+        try
         {
-            XamlRoot = XamlRoot,
-            Title = result.Title,
-            Content = result.Message,
-            CloseButtonText = enabling && succeeded ? "关闭前台" : "知道了",
-        };
+            var dialog = new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = result.Title,
+                Content = result.Message,
+                CloseButtonText = enabling && succeeded ? "关闭前台" : "知道了",
+            };
 
-        await dialog.ShowAsync();
+            await dialog.ShowAsync();
+        }
+        finally
+        {
+            isServiceDialogOpen = false;
+        }
     }
 
     private void OnPageSizeChanged(object sender, SizeChangedEventArgs e)

@@ -10,7 +10,7 @@ public sealed class CliRunner
     private Process? process;
     private string? lastLaunchSignature;
 
-    public bool EnsureRunning(AppSettings settings, bool force = false)
+    public bool EnsureRunning(AppSettings settings, int port, bool force = false)
     {
         if (!settings.AutoRunCliEnabled && !force)
         {
@@ -28,11 +28,16 @@ public sealed class CliRunner
             return true;
         }
 
+        if (IsCompatibleBackendListening(cliPath, port))
+        {
+            return true;
+        }
+
         Stop();
         return Start(cliPath, args, logDirectory, trackProcess: true);
     }
 
-    public bool TryStartOnDemand(AppSettings settings)
+    public bool TryStartOnDemand(AppSettings settings, int port)
     {
         var cliPath = AppPaths.ResolveCliPath(settings.CliPath);
         var args = settings.CliArgs ?? string.Empty;
@@ -42,6 +47,11 @@ public sealed class CliRunner
         if (process is not null
             && !process.HasExited
             && string.Equals(lastLaunchSignature, launchSignature, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (IsCompatibleBackendListening(cliPath, port))
         {
             return true;
         }
@@ -172,7 +182,7 @@ public sealed class CliRunner
     {
         foreach (var pid in GetListeningPortOwners(port))
         {
-            if (!IsManagedCliProcess(pid, cliPath))
+            if (!IsManagedCliProcess(pid, cliPath, allowSiblingProductProcess: true))
             {
                 continue;
             }
@@ -191,6 +201,19 @@ public sealed class CliRunner
                 // Ignore failures and let the final port release probe decide.
             }
         }
+    }
+
+    private static bool IsCompatibleBackendListening(string cliPath, int port)
+    {
+        foreach (var pid in GetListeningPortOwners(port))
+        {
+            if (IsManagedCliProcess(pid, cliPath, allowSiblingProductProcess: true))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsPortInUse(int port)
@@ -294,7 +317,7 @@ public sealed class CliRunner
         return int.TryParse(address[(separatorIndex + 1)..], out port) && port > 0;
     }
 
-    private static bool IsManagedCliProcess(int pid, string cliPath)
+    private static bool IsManagedCliProcess(int pid, string cliPath, bool allowSiblingProductProcess = false)
     {
         try
         {
@@ -302,7 +325,8 @@ public sealed class CliRunner
             var candidatePath = ownedProcess.MainModule?.FileName;
             if (!string.IsNullOrWhiteSpace(candidatePath))
             {
-                return SamePath(candidatePath, cliPath);
+                return SamePath(candidatePath, cliPath)
+                    || (allowSiblingProductProcess && SameFileName(candidatePath, cliPath));
             }
 
             return string.Equals(ownedProcess.ProcessName, Path.GetFileNameWithoutExtension(cliPath), StringComparison.OrdinalIgnoreCase);
@@ -315,6 +339,9 @@ public sealed class CliRunner
 
     private static bool SamePath(string left, string right)
         => string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.OrdinalIgnoreCase);
+
+    private static bool SameFileName(string left, string right)
+        => string.Equals(Path.GetFileName(left), Path.GetFileName(right), StringComparison.OrdinalIgnoreCase);
 
     private static TimeSpan Remaining(DateTimeOffset deadline)
     {

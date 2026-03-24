@@ -173,6 +173,13 @@ namespace ClashForClaw
                 {
                     AppState.HideToTray(window);
                 }
+                return;
+            }
+
+            if (!AppState.IsServiceModeEnabled)
+            {
+                args.Cancel = true;
+                AppState.RequestExit();
             }
         }
 

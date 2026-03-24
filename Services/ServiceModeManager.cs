@@ -85,7 +85,7 @@ public static class ServiceModeManager
         }
 
         var current = Query(settings);
-        if (!current.IsEnabled)
+        if (!current.IsServiceMode)
         {
             var install = RunServiceCommand(cliPath, "install");
             if (!install.Ok)
