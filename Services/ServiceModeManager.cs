@@ -1,4 +1,6 @@
 using System;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using ClashForClaw.Models;
@@ -49,11 +51,11 @@ public static class ServiceModeManager
             {
                 Error = "未找到内置服务组件。",
                 Reason = "cli_missing",
-                Hint = "请确认发布目录中的 ClashForClaw.Service.exe 存在并可访问。",
+                Hint = "请确认发布目录中的 ClashForClaw.Service.exe 存在且可访问。",
             };
         }
 
-        return ParseState(RunServiceCommand(cliPath, "status"));
+        return ParseState(RunServiceCommand(cliPath, "status", allowElevation: false));
     }
 
     public static ServiceModeResult Enable(AppSettings settings)
@@ -185,8 +187,16 @@ public static class ServiceModeManager
         return ProcessRunner.Run(cliPath, args);
     }
 
-    private static ServiceCommandResponse RunServiceCommand(string cliPath, string command)
-        => ParseServiceCommand(RunCli(cliPath, command), command);
+    private static ServiceCommandResponse RunServiceCommand(string cliPath, string command, bool allowElevation = true)
+    {
+        var response = ParseServiceCommand(RunCli(cliPath, command), command);
+        if (!allowElevation || !ShouldRetryElevated(command, response))
+        {
+            return response;
+        }
+
+        return RunServiceCommandElevated(cliPath, command);
+    }
 
     private static ServiceCommandResponse ParseServiceCommand(ProcessResult result, string action)
     {
@@ -242,7 +252,7 @@ public static class ServiceModeManager
             {
                 Title = "未注册为 Windows 服务，已回退为计划任务",
                 FallbackScheduled = true,
-                Message = $"当前未能注册 Windows 服务，系统已回退为计划任务以维持后台运行。这不等同于 Windows 服务模式；若要注册真正的 Windows 服务，请使用管理员权限重新启用。数据目录：{AppPaths.ServiceBaseDirectory}",
+                Message = $"当前未能注册 Windows 服务，系统已回退为计划任务以维持后台运行。这不等同于 Windows 服务模式；若要注册真正的 Windows 服务，请接受系统提权或使用管理员权限重新启用。数据目录：{AppPaths.ServiceBaseDirectory}",
             };
         }
 
@@ -282,6 +292,100 @@ public static class ServiceModeManager
     private static bool ContainsKnownMessage(string text, string token)
         => text.Contains(token, StringComparison.OrdinalIgnoreCase);
 
+    private static bool ShouldRetryElevated(string command, ServiceCommandResponse response)
+    {
+        if (response.Ok || !IsPrivilegedServiceCommand(command))
+        {
+            return false;
+        }
+
+        if (response.RequiresElevation)
+        {
+            return true;
+        }
+
+        return ContainsKnownMessage(response.Reason, "requires_elevation")
+            || ContainsKnownMessage(response.Error, "Access is denied")
+            || ContainsKnownMessage(response.Error, "service_start_requires_elevation");
+    }
+
+    private static bool IsPrivilegedServiceCommand(string command)
+        => command is "install" or "start" or "stop" or "uninstall";
+
+    private static ServiceCommandResponse RunServiceCommandElevated(string cliPath, string command)
+    {
+        var jsonPath = Path.Combine(Path.GetTempPath(), $"clashforclaw-service-{command}-{Guid.NewGuid():N}.json");
+        try
+        {
+            using var process = new Process();
+            process.StartInfo = new ProcessStartInfo
+            {
+                FileName = cliPath,
+                Arguments = $"--base-dir \"{AppPaths.ServiceBaseDirectory}\" service {command} --json-file \"{jsonPath}\"",
+                UseShellExecute = true,
+                Verb = "runas",
+                WindowStyle = ProcessWindowStyle.Hidden,
+            };
+
+            process.Start();
+            process.WaitForExit();
+
+            if (File.Exists(jsonPath))
+            {
+                var output = File.ReadAllText(jsonPath);
+                var parsed = TryParseServiceCommand(output);
+                if (parsed is not null)
+                {
+                    return parsed;
+                }
+
+                return new ServiceCommandResponse
+                {
+                    Action = command,
+                    Error = "elevated_service_command_response_invalid",
+                };
+            }
+
+            return new ServiceCommandResponse
+            {
+                Action = command,
+                Error = $"elevated_command_exit_code_{process.ExitCode}",
+            };
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            return new ServiceCommandResponse
+            {
+                Action = command,
+                Error = "elevation_cancelled",
+                Reason = "elevation_cancelled",
+                Hint = "Accept the UAC prompt to continue enabling Windows service mode.",
+                RequiresElevation = true,
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceCommandResponse
+            {
+                Action = command,
+                Error = ex.Message,
+            };
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(jsonPath))
+                {
+                    File.Delete(jsonPath);
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+
     public static ServiceModeResult WithDesktopFallback(ServiceModeResult result)
     {
         if (result.ServiceStarted || result.FallbackScheduled || result.DesktopFallbackStarted)
@@ -300,11 +404,16 @@ public static class ServiceModeManager
     private static string BuildEnableFailureMessage(ServiceCommandResponse result)
     {
         var detail = ExtractError(result, "注册 Windows 服务失败。");
+        if (ContainsKnownMessage(result.Reason, "elevation_cancelled"))
+        {
+            return "已取消管理员授权，Windows 服务模式未启用。";
+        }
+
         if (result.RequiresElevation
             || ContainsKnownMessage(result.Reason, "install_requires_elevation_or_task_scheduler_access")
             || ContainsKnownMessage(detail, "Access is denied"))
         {
-            return "当前会话没有管理员权限，暂时无法注册 Windows 服务。请右键“以管理员身份运行”后重新启用；在此之前应用会保持现有后台方式，避免中断当前链路。";
+            return "当前操作需要管理员权限。应用会弹出系统提权窗口；如果取消 UAC，Windows 服务模式就不会启动。";
         }
 
         if (!string.IsNullOrWhiteSpace(result.Hint))

@@ -143,6 +143,7 @@ func waitForSignal(server *api.Server) int {
 
 func runServiceCommand(baseOverride string, paths runtime.Paths, args []string) int {
 	jsonOutput, args := extractFlag(args, "--json")
+	jsonFilePath, args := extractValueFlag(args, "--json-file")
 	if len(args) == 0 {
 		fmt.Println("usage: ClashForClaw.Service.exe service install|start|stop|uninstall|status")
 		return 2
@@ -150,7 +151,7 @@ func runServiceCommand(baseOverride string, paths runtime.Paths, args []string) 
 	manager, err := svc.NewManager(baseOverride, paths)
 	if err != nil {
 		log.Printf("service manager init failed: %v", err)
-		writeServiceCommandJSON(jsonOutput, buildServiceCommandPayload(false, "init", svc.ModeNone, "", err))
+		writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(false, "init", svc.ModeNone, "", err))
 		return 1
 	}
 	switch strings.ToLower(args[0]) {
@@ -158,20 +159,20 @@ func runServiceCommand(baseOverride string, paths runtime.Paths, args []string) 
 		mode, err := manager.Install()
 		if err != nil {
 			log.Printf("install failed: %v", err)
-			writeServiceCommandJSON(jsonOutput, buildServiceCommandPayload(false, "install", svc.ModeNone, "", err))
+			writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(false, "install", svc.ModeNone, "", err))
 			return 1
 		}
-		writeServiceCommandJSON(jsonOutput, buildServiceCommandPayload(true, "install", mode, "", nil))
+		writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(true, "install", mode, "", nil))
 		if !jsonOutput {
 			fmt.Printf("installed: %s\n", mode)
 		}
 	case "uninstall":
 		if err := manager.Uninstall(); err != nil {
 			log.Printf("uninstall failed: %v", err)
-			writeServiceCommandJSON(jsonOutput, buildServiceCommandPayload(false, "uninstall", svc.ModeNone, "", err))
+			writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(false, "uninstall", svc.ModeNone, "", err))
 			return 1
 		}
-		writeServiceCommandJSON(jsonOutput, buildServiceCommandPayload(true, "uninstall", svc.ModeNone, "", nil))
+		writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(true, "uninstall", svc.ModeNone, "", nil))
 		if !jsonOutput {
 			fmt.Println("uninstalled")
 		}
@@ -179,20 +180,20 @@ func runServiceCommand(baseOverride string, paths runtime.Paths, args []string) 
 		mode, err := manager.StartWithMode()
 		if err != nil {
 			log.Printf("start failed: %v", err)
-			writeServiceCommandJSON(jsonOutput, buildServiceCommandPayload(false, "start", mode, "", err))
+			writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(false, "start", mode, "", err))
 			return 1
 		}
-		writeServiceCommandJSON(jsonOutput, buildServiceCommandPayload(true, "start", mode, "", nil))
+		writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(true, "start", mode, "", nil))
 		if !jsonOutput {
 			fmt.Println("started")
 		}
 	case "stop":
 		if err := manager.Stop(); err != nil {
 			log.Printf("stop failed: %v", err)
-			writeServiceCommandJSON(jsonOutput, buildServiceCommandPayload(false, "stop", svc.ModeNone, "", err))
+			writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(false, "stop", svc.ModeNone, "", err))
 			return 1
 		}
-		writeServiceCommandJSON(jsonOutput, buildServiceCommandPayload(true, "stop", svc.ModeNone, "", nil))
+		writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(true, "stop", svc.ModeNone, "", nil))
 		if !jsonOutput {
 			fmt.Println("stopped")
 		}
@@ -200,10 +201,10 @@ func runServiceCommand(baseOverride string, paths runtime.Paths, args []string) 
 		mode, status, err := manager.Status()
 		if err != nil {
 			log.Printf("status failed: %v", err)
-			writeServiceCommandJSON(jsonOutput, buildServiceCommandPayload(false, "status", svc.ModeNone, "", err))
+			writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(false, "status", svc.ModeNone, "", err))
 			return 1
 		}
-		writeServiceCommandJSON(jsonOutput, buildServiceCommandPayload(true, "status", mode, serviceStatusString(status), nil))
+		writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(true, "status", mode, serviceStatusString(status), nil))
 		if !jsonOutput {
 			fmt.Printf("mode: %s, status: %s\n", mode, serviceStatusString(status))
 		}
@@ -243,6 +244,25 @@ func extractFlag(args []string, flag string) (bool, []string) {
 		filtered = append(filtered, arg)
 	}
 	return found, filtered
+}
+
+func extractValueFlag(args []string, flag string) (string, []string) {
+	filtered := make([]string, 0, len(args))
+	value := ""
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == flag && i+1 < len(args) {
+			value = args[i+1]
+			i++
+			continue
+		}
+		if strings.HasPrefix(arg, flag+"=") {
+			value = strings.TrimPrefix(arg, flag+"=")
+			continue
+		}
+		filtered = append(filtered, arg)
+	}
+	return value, filtered
 }
 
 func extractBaseDirArg(args []string) (string, []string) {
@@ -309,14 +329,22 @@ func buildServiceCommandPayload(ok bool, action string, mode svc.Mode, status st
 	return payload
 }
 
-func writeServiceCommandJSON(enabled bool, payload serviceCommandPayload) {
-	if !enabled {
+func writeServiceCommandJSON(enabled bool, jsonFilePath string, payload serviceCommandPayload) {
+	if !enabled && jsonFilePath == "" {
 		return
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Printf("{\"ok\":false,\"action\":\"%s\",\"error\":\"json_marshal_failed\"}\n", payload.Action)
+		data = []byte(fmt.Sprintf("{\"ok\":false,\"action\":\"%s\",\"error\":\"json_marshal_failed\"}", payload.Action))
+	}
+	if enabled {
+		fmt.Println(string(data))
+	}
+	if jsonFilePath == "" {
 		return
 	}
-	fmt.Println(string(data))
+	if dir := filepath.Dir(jsonFilePath); dir != "" && dir != "." {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	_ = os.WriteFile(jsonFilePath, data, 0o600)
 }

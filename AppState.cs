@@ -24,8 +24,8 @@ public static class AppState
     public static TrayIconManager Tray { get; } = new();
     public static CliRunner CliRunner { get; } = new();
     public static ServiceModeState ServiceMode { get; private set; } = new();
-    public static bool IsServiceModeEnabled => ServiceMode.IsEnabled;
-    public static bool IsWindowsServiceMode => ServiceMode.IsServiceMode;
+    public static bool IsServiceModeEnabled => (ServiceMode.IsServiceMode && ServiceMode.IsRunning) || ServiceMode.IsTaskFallback;
+    public static bool IsWindowsServiceMode => ServiceMode.IsServiceMode && ServiceMode.IsRunning;
     public static bool AllowClose { get; set; }
 
     public static void Initialize()
@@ -390,7 +390,7 @@ public static class AppState
     public static ServiceModeState RefreshServiceModeState()
     {
         ServiceMode = ServiceModeManager.Query(SettingsStore.Current);
-        ApplyServiceModeSelection(ServiceMode.IsServiceMode, ServiceMode.IsTaskFallback);
+        ApplyServiceModeSelection(ServiceMode.IsServiceMode && ServiceMode.IsRunning, ServiceMode.IsTaskFallback);
         return ServiceMode;
     }
 
