@@ -77,7 +77,7 @@ func resolveRunMode(args []string) runMode {
 }
 
 func runAsService(paths runtime.Paths) int {
-	daemon, err := NewDaemon(paths)
+	daemon, err := NewDaemon(paths, false)
 	if err != nil {
 		log.Printf("daemon init failed: %v", err)
 		return 1
@@ -114,7 +114,7 @@ func (p *serviceProgram) Stop(service.Service) error {
 }
 
 func runDaemon(paths runtime.Paths) int {
-	daemon, err := NewDaemon(paths)
+	daemon, err := NewDaemon(paths, true)
 	if err != nil {
 		log.Printf("daemon init failed: %v", err)
 		return 1

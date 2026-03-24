@@ -371,6 +371,7 @@ public static class AppState
             isSwitchingToServiceMode = true;
             try
             {
+                await TryRequestDesktopBackendShutdownAsync(ServiceModeBackendDrainTimeout);
                 _ = await CliRunner.StopManagedBackendAsync(SettingsStore.Current, AdapterPort, ServiceModeBackendDrainTimeout);
 
                 var enableResult = await Task.Run(() => ServiceModeManager.Enable(SettingsStore.Current));
@@ -452,6 +453,29 @@ public static class AppState
         catch
         {
             return false;
+        }
+    }
+
+    private static async Task TryRequestDesktopBackendShutdownAsync(TimeSpan timeout)
+    {
+        try
+        {
+            await Api.ShutdownDesktopBackendAsync();
+        }
+        catch
+        {
+            return;
+        }
+
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (!await IsBackendReachableAsync())
+            {
+                return;
+            }
+
+            await Task.Delay(150);
         }
     }
 

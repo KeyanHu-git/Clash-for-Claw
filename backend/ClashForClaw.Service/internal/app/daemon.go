@@ -12,8 +12,8 @@ type Daemon struct {
 	server *api.Server
 }
 
-func NewDaemon(paths runtime.Paths) (*Daemon, error) {
-	server, err := api.NewServer(paths)
+func NewDaemon(paths runtime.Paths, allowSelfShutdown bool) (*Daemon, error) {
+	server, err := api.NewServer(paths, allowSelfShutdown)
 	if err != nil {
 		return nil, err
 	}

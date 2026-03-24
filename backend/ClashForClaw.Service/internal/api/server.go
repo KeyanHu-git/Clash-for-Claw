@@ -31,6 +31,7 @@ type Server struct {
 	paths       runtime.Paths
 	cfgPath     string
 	cfg         *config.Config
+	allowSelfShutdown bool
 	router      *mux.Router
 	httpServer  *http.Server
 	proxyMgr    *proxy.Manager
@@ -42,19 +43,20 @@ type Server struct {
 	shutdownErr error
 }
 
-func NewServer(paths runtime.Paths) (*Server, error) {
+func NewServer(paths runtime.Paths, allowSelfShutdown bool) (*Server, error) {
 	cfg, err := config.LoadOrInit(paths.ConfigPath)
 	if err != nil {
 		return nil, err
 	}
 	server := &Server{
-		paths:    paths,
-		cfgPath:  paths.ConfigPath,
-		cfg:      cfg,
-		proxyMgr: proxy.NewManager(paths),
-		sysProxy: systemproxy.NewManager(paths),
-		nonce:    randomNonce(),
-		done:     make(chan error, 1),
+		paths:             paths,
+		cfgPath:           paths.ConfigPath,
+		cfg:               cfg,
+		allowSelfShutdown: allowSelfShutdown,
+		proxyMgr:          proxy.NewManager(paths),
+		sysProxy:          systemproxy.NewManager(paths),
+		nonce:             randomNonce(),
+		done:              make(chan error, 1),
 	}
 	server.subMgr = subscription.NewManager(paths, cfg, server.proxyMgr)
 	server.subMgr.Start()
@@ -125,6 +127,7 @@ func (s *Server) routes() *mux.Router {
 	r.HandleFunc("/service/start", s.handleServiceStart).Methods("POST")
 	r.HandleFunc("/service/stop", s.handleServiceStop).Methods("POST")
 	r.HandleFunc("/service/uninstall", s.handleServiceUninstall).Methods("POST")
+	r.HandleFunc("/daemon/shutdown", s.handleDaemonShutdown).Methods("POST")
 	r.HandleFunc("/system-proxy/enable", s.handleSystemProxyEnable).Methods("POST")
 	r.HandleFunc("/system-proxy/disable", s.handleSystemProxyDisable).Methods("POST")
 	return r
@@ -414,6 +417,24 @@ func (s *Server) handleServiceUninstall(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (s *Server) handleDaemonShutdown(w http.ResponseWriter, r *http.Request) {
+	if !s.requireNonce(w, r) {
+		return
+	}
+	if !s.allowSelfShutdown {
+		writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "forbidden"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	go func() {
+		time.Sleep(150 * time.Millisecond)
+		ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+		defer cancel()
+		_ = s.Shutdown(ctx)
+	}()
 }
 
 func (s *Server) handleSystemProxyEnable(w http.ResponseWriter, r *http.Request) {

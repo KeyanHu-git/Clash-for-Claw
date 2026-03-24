@@ -47,6 +47,9 @@ public sealed class AdapterApiClient
     public Task DisableSystemProxyAsync()
         => SendAsync(HttpMethod.Post, "/system-proxy/disable", EmptyBody, requireNonce: true, AppJsonContext.Default.EmptyRequest, AppJsonContext.Default.AdapterBaseResponse);
 
+    public Task ShutdownDesktopBackendAsync()
+        => SendAsync(HttpMethod.Post, "/daemon/shutdown", EmptyBody, requireNonce: true, AppJsonContext.Default.EmptyRequest, AppJsonContext.Default.AdapterBaseResponse);
+
     public Task CreateSubscriptionAsync(string url, string? name)
     {
         var payload = new SubscriptionCreateRequest
