@@ -24,18 +24,13 @@ func Run(args []string) int {
 		return code
 	}
 	if len(args) > 0 && args[0] == "service" {
-		// Service commands sync user config into the service base before
-		// installing or starting the Windows service. Keep the user-side source
-		// anchored to the default per-user config directory instead of the
-		// service base override, otherwise ProgramData ends up syncing from
-		// itself and the desktop config is lost.
-		paths, err := runtime.ResolvePaths("")
+		userPaths, servicePaths, err := resolveServiceCommandPaths(baseDir)
 		if err != nil {
 			log.Printf("paths init failed: %v", err)
 			return 1
 		}
-		setupLogging(paths)
-		return runServiceCommand(baseDir, paths, args[1:])
+		setupLogging(servicePaths)
+		return runServiceCommand(baseDir, userPaths, args[1:])
 	}
 
 	mode := resolveRunMode(args)
@@ -51,6 +46,10 @@ func Run(args []string) int {
 	}
 	if err != nil {
 		log.Printf("paths init failed: %v", err)
+		return 1
+	}
+	if err := prepareOperationalConfig(mode, paths); err != nil {
+		log.Printf("config sync failed: %v", err)
 		return 1
 	}
 	setupLogging(paths)
@@ -74,6 +73,24 @@ func resolveRunMode(args []string) runMode {
 		return runModeService
 	}
 	return runModeDaemon
+}
+
+func prepareOperationalConfig(mode runMode, paths runtime.Paths) error {
+	if mode != runModeDaemon {
+		return nil
+	}
+
+	sharedPaths := runtime.PeekDefaultServicePaths()
+	if !runtime.SameBaseDir(paths.BaseDir, sharedPaths.BaseDir) {
+		return nil
+	}
+
+	userPaths := runtime.PeekUserPaths()
+	if runtime.SameBaseDir(userPaths.BaseDir, paths.BaseDir) {
+		return nil
+	}
+
+	return runtime.SyncOperationalConfig(userPaths, paths)
 }
 
 func runAsService(paths runtime.Paths) int {
@@ -141,14 +158,26 @@ func waitForSignal(server *api.Server) int {
 	return 0
 }
 
-func runServiceCommand(baseOverride string, paths runtime.Paths, args []string) int {
+func resolveServiceCommandPaths(baseOverride string) (runtime.Paths, runtime.Paths, error) {
+	userPaths, err := runtime.ResolvePaths("")
+	if err != nil {
+		return runtime.Paths{}, runtime.Paths{}, err
+	}
+	servicePaths, err := runtime.ResolveServicePaths(baseOverride)
+	if err != nil {
+		return runtime.Paths{}, runtime.Paths{}, err
+	}
+	return userPaths, servicePaths, nil
+}
+
+func runServiceCommand(baseOverride string, userPaths runtime.Paths, args []string) int {
 	jsonOutput, args := extractFlag(args, "--json")
 	jsonFilePath, args := extractValueFlag(args, "--json-file")
 	if len(args) == 0 {
 		fmt.Println("usage: ClashForClaw.Service.exe service install|start|stop|uninstall|status")
 		return 2
 	}
-	manager, err := svc.NewManager(baseOverride, paths)
+	manager, err := svc.NewManager(baseOverride, userPaths)
 	if err != nil {
 		log.Printf("service manager init failed: %v", err)
 		writeServiceCommandJSON(jsonOutput, jsonFilePath, buildServiceCommandPayload(false, "init", svc.ModeNone, "", err))

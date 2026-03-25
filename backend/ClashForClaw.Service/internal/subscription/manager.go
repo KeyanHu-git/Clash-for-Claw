@@ -31,9 +31,10 @@ const (
 	SourceURL  = "url"
 	SourceFile = "file"
 
-	StateOK      = "ok"
-	StateError   = "error"
-	StateUnknown = "unknown"
+	StateOK                      = "ok"
+	StateError                   = "error"
+	StateUnknown                 = "unknown"
+	latencyStickinessThresholdMs = int64(150)
 )
 
 var errUserinfoMissing = errors.New("subscription_userinfo_missing")
@@ -54,10 +55,11 @@ type View struct {
 }
 
 type Manager struct {
-	mu       sync.Mutex
-	paths    runtime.Paths
-	cfg      *config.Config
-	proxyMgr *proxy.Manager
+	mu         sync.Mutex
+	failoverMu sync.Mutex
+	paths      runtime.Paths
+	cfg        *config.Config
+	proxyMgr   proxyRuntime
 
 	billingInterval time.Duration
 	probeInterval   time.Duration
@@ -65,13 +67,21 @@ type Manager struct {
 	probeUpdates    chan time.Duration
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
+	probeCandidate  subscriptionProbeFunc
 }
 
-func NewManager(paths runtime.Paths, cfg *config.Config, proxyMgr *proxy.Manager) *Manager {
+type proxyRuntime interface {
+	Apply(*config.Config) proxy.Status
+}
+
+type subscriptionProbeFunc func(context.Context, runtime.Paths, *config.Config, config.Subscription, string) gateway.ProbeResult
+
+func NewManager(paths runtime.Paths, cfg *config.Config, proxyMgr proxyRuntime) *Manager {
 	return &Manager{
-		paths:    paths,
-		cfg:      cfg,
-		proxyMgr: proxyMgr,
+		paths:          paths,
+		cfg:            cfg,
+		proxyMgr:       proxyMgr,
+		probeCandidate: probeSubscriptionWithShadowRuntime,
 	}
 }
 
@@ -94,6 +104,7 @@ func (m *Manager) Start() {
 
 	go m.billingLoop(loopCtx)
 	go m.probeLoop(loopCtx)
+	go m.reconcileOnStart(loopCtx)
 }
 
 func (m *Manager) Stop() {
@@ -101,6 +112,8 @@ func (m *Manager) Stop() {
 	cancel := m.loopCancel
 	m.loopCancel = nil
 	m.loopCtx = nil
+	m.billingUpdates = nil
+	m.probeUpdates = nil
 	m.mu.Unlock()
 	if cancel != nil {
 		cancel()
@@ -409,6 +422,10 @@ func (m *Manager) Delete(id string) (string, error) {
 				m.cfg.Proxy.Mode = config.ProxyModeSubscription
 				m.proxyMgr.Apply(m.cfg)
 			}
+		} else {
+			m.cfg.Proxy.SubscriptionURL = ""
+			m.cfg.Proxy.Mode = config.ProxyModeLocalPort
+			m.proxyMgr.Apply(m.cfg)
 		}
 	}
 
@@ -435,7 +452,18 @@ func (m *Manager) CopyURL(id string) (string, error) {
 func (m *Manager) ProbeAndFailover() error {
 	m.mu.Lock()
 	gatewayURL := m.cfg.Gateway.URL
-	proxyURL := m.proxyMgr.ProxyURL()
+	mode := m.cfg.Proxy.Mode
+	m.mu.Unlock()
+
+	if gatewayURL == "" || mode != config.ProxyModeSubscription {
+		return nil
+	}
+	return m.failover(gatewayURL)
+}
+
+func (m *Manager) ReconcilePreferredSubscription() error {
+	m.mu.Lock()
+	gatewayURL := m.cfg.Gateway.URL
 	mode := m.cfg.Proxy.Mode
 	m.mu.Unlock()
 
@@ -443,10 +471,6 @@ func (m *Manager) ProbeAndFailover() error {
 		return nil
 	}
 
-	probe := gateway.Probe(context.Background(), gatewayURL, proxyURL)
-	if probe.GatewayOK {
-		return nil
-	}
 	return m.failover(gatewayURL)
 }
 
@@ -496,7 +520,7 @@ func (m *Manager) probeLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			_ = m.ProbeAndFailover()
+			_ = m.scheduledMaintenance()
 		case next := <-updates:
 			if next <= 0 {
 				next = interval
@@ -509,55 +533,125 @@ func (m *Manager) probeLoop(ctx context.Context) {
 	}
 }
 
+func (m *Manager) scheduledMaintenance() error {
+	m.mu.Lock()
+	shouldReconcile := m.cfg.Proxy.Mode == config.ProxyModeSubscription && m.cfg.Gateway.URL != "" && len(m.cfg.Proxy.Subscriptions) > 1
+	m.mu.Unlock()
+
+	if shouldReconcile {
+		return m.ReconcilePreferredSubscription()
+	}
+	return m.ProbeAndFailover()
+}
+
+func (m *Manager) reconcileOnStart(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
+	_ = m.ReconcilePreferredSubscription()
+}
+
 func (m *Manager) failover(gatewayURL string) error {
+	m.failoverMu.Lock()
+	defer m.failoverMu.Unlock()
+
+	snapshot := m.snapshotForFailover()
+	if len(snapshot.Subscriptions) == 0 {
+		return nil
+	}
+
+	results := make([]probedSubscriptionCandidate, 0, len(snapshot.Subscriptions))
+	for i, sub := range snapshot.Subscriptions {
+		if strings.TrimSpace(sub.URL) == "" {
+			continue
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		probe := m.probeCandidate(ctx, m.paths, snapshot.Config, sub, gatewayURL)
+		cancel()
+
+		results = append(results, probedSubscriptionCandidate{
+			Index:        i,
+			Subscription: sub,
+			Probe:        probe,
+		})
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if gatewayURL == "" {
 		return nil
 	}
+	if m.cfg.Proxy.Mode != config.ProxyModeSubscription {
+		return nil
+	}
+	if !strings.EqualFold(strings.TrimSpace(m.cfg.Gateway.URL), strings.TrimSpace(gatewayURL)) {
+		return nil
+	}
+	if !matchesFailoverSnapshot(m.cfg, snapshot) {
+		return nil
+	}
 
-	okIndexes := make([]int, 0)
+	originalActiveID := m.cfg.Proxy.ActiveSubscriptionId
 	now := time.Now().Unix()
+	candidates := make([]subscriptionCandidate, 0, len(results))
 
-	for i := range m.cfg.Proxy.Subscriptions {
-		sub := &m.cfg.Proxy.Subscriptions[i]
-		if sub.URL == "" {
-			sub.State = StateUnknown
+	for _, result := range results {
+		sub, idx := m.findLocked(result.Subscription.ID)
+		if sub == nil || idx < 0 {
 			continue
 		}
-
-		m.cfg.Proxy.ActiveSubscriptionId = sub.ID
-		m.cfg.Proxy.SubscriptionURL = sub.URL
-		m.cfg.Proxy.Mode = config.ProxyModeSubscription
-		m.proxyMgr.Apply(m.cfg)
-
-		probe := gateway.Probe(context.Background(), gatewayURL, m.proxyMgr.ProxyURL())
-		if probe.GatewayOK {
+		if !strings.EqualFold(strings.TrimSpace(sub.URL), strings.TrimSpace(result.Subscription.URL)) {
+			continue
+		}
+		if result.Probe.GatewayOK && result.Probe.InternetOK {
 			sub.State = StateOK
 			sub.LastSuccessAt = now
-			okIndexes = append(okIndexes, i)
+		} else if result.Probe.GatewayOK {
+			sub.State = StateUnknown
 		} else {
 			sub.State = StateError
 		}
-		m.refreshUsageLocked(sub)
+		candidates = append(candidates, subscriptionCandidate{
+			Index:   idx,
+			Current: sub.ID == originalActiveID,
+			Probe:   result.Probe,
+		})
 	}
 
 	var chosen *config.Subscription
-	if len(okIndexes) > 0 {
-		chosen = pickNearestExpiry(m.cfg.Proxy.Subscriptions, okIndexes)
+	if hasHealthyCandidate(candidates) {
+		chosen = pickBestHealthySubscription(m.cfg.Proxy.Subscriptions, candidates)
 	} else {
 		chosen = pickLatestSuccess(m.cfg.Proxy.Subscriptions)
 	}
 
 	if chosen != nil && chosen.URL != "" {
-		m.cfg.Proxy.ActiveSubscriptionId = chosen.ID
-		m.cfg.Proxy.SubscriptionURL = chosen.URL
-		m.cfg.Proxy.Mode = config.ProxyModeSubscription
-		m.proxyMgr.Apply(m.cfg)
+		if chosen.ID != originalActiveID ||
+			!strings.EqualFold(strings.TrimSpace(m.cfg.Proxy.SubscriptionURL), strings.TrimSpace(chosen.URL)) ||
+			m.cfg.Proxy.Mode != config.ProxyModeSubscription {
+			m.cfg.Proxy.ActiveSubscriptionId = chosen.ID
+			m.cfg.Proxy.SubscriptionURL = chosen.URL
+			m.cfg.Proxy.Mode = config.ProxyModeSubscription
+			m.proxyMgr.Apply(m.cfg)
+		}
 	}
 
 	return config.Save(m.paths.ConfigPath, m.cfg)
+}
+
+func (m *Manager) snapshotForFailover() failoverSnapshot {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return failoverSnapshot{
+		Config:        cloneConfig(m.cfg),
+		Subscriptions: append([]config.Subscription(nil), m.cfg.Proxy.Subscriptions...),
+	}
 }
 
 func (m *Manager) refreshUsageLocked(sub *config.Subscription) bool {
@@ -567,10 +661,7 @@ func (m *Manager) refreshUsageLocked(sub *config.Subscription) bool {
 	}
 	if err != nil {
 		if errors.Is(err, errUserinfoMissing) {
-			sub.State = StateOK
-			sub.UsageUsed = 0
-			sub.UsageLimit = 0
-			sub.UsageUnit = "GB"
+			sub.State = StateUnknown
 			sub.UpdatedAt = time.Now().Unix()
 			return true
 		}
@@ -616,22 +707,129 @@ func (m *Manager) selectFallbackLocked() string {
 	return m.cfg.Proxy.Subscriptions[0].ID
 }
 
-func pickNearestExpiry(subs []config.Subscription, indexes []int) *config.Subscription {
-	sort.SliceStable(indexes, func(i, j int) bool {
-		left := subs[indexes[i]].ExpireAt
-		right := subs[indexes[j]].ExpireAt
-		if left <= 0 {
-			left = int64(^uint64(0) >> 1)
+type subscriptionCandidate struct {
+	Index   int
+	Current bool
+	Probe   gateway.ProbeResult
+}
+
+type probedSubscriptionCandidate struct {
+	Index        int
+	Subscription config.Subscription
+	Probe        gateway.ProbeResult
+}
+
+type failoverSnapshot struct {
+	Config        *config.Config
+	Subscriptions []config.Subscription
+}
+
+func matchesFailoverSnapshot(current *config.Config, snapshot failoverSnapshot) bool {
+	if current == nil || snapshot.Config == nil {
+		return false
+	}
+	if !strings.EqualFold(strings.TrimSpace(current.Proxy.ActiveSubscriptionId), strings.TrimSpace(snapshot.Config.Proxy.ActiveSubscriptionId)) {
+		return false
+	}
+	if !strings.EqualFold(strings.TrimSpace(current.Proxy.SubscriptionURL), strings.TrimSpace(snapshot.Config.Proxy.SubscriptionURL)) {
+		return false
+	}
+	if len(current.Proxy.Subscriptions) != len(snapshot.Subscriptions) {
+		return false
+	}
+
+	for i := range snapshot.Subscriptions {
+		left := current.Proxy.Subscriptions[i]
+		right := snapshot.Subscriptions[i]
+		if left.ID != right.ID {
+			return false
 		}
-		if right <= 0 {
-			right = int64(^uint64(0) >> 1)
+		if !strings.EqualFold(strings.TrimSpace(left.URL), strings.TrimSpace(right.URL)) {
+			return false
 		}
-		return left < right
-	})
-	if len(indexes) == 0 {
+	}
+
+	return true
+}
+
+func hasHealthyCandidate(candidates []subscriptionCandidate) bool {
+	for _, candidate := range candidates {
+		if candidate.Probe.GatewayOK && candidate.Probe.InternetOK {
+			return true
+		}
+	}
+	return false
+}
+
+func pickBestHealthySubscription(subs []config.Subscription, candidates []subscriptionCandidate) *config.Subscription {
+	if len(candidates) == 0 {
 		return nil
 	}
-	return &subs[indexes[0]]
+
+	sort.SliceStable(candidates, func(i, j int) bool {
+		return betterCandidate(candidates[i], candidates[j])
+	})
+
+	best := candidates[0]
+	if best.Index < 0 || best.Index >= len(subs) {
+		return nil
+	}
+	return &subs[best.Index]
+}
+
+func betterCandidate(left subscriptionCandidate, right subscriptionCandidate) bool {
+	leftTier := candidateTier(left.Probe)
+	rightTier := candidateTier(right.Probe)
+	if leftTier != rightTier {
+		return leftTier > rightTier
+	}
+
+	leftLatency := candidateLatencyScore(left.Probe)
+	rightLatency := candidateLatencyScore(right.Probe)
+
+	if left.Current != right.Current {
+		if left.Current && leftLatency <= rightLatency+latencyStickinessThresholdMs {
+			return true
+		}
+		if right.Current && rightLatency <= leftLatency+latencyStickinessThresholdMs {
+			return false
+		}
+	}
+
+	if leftLatency != rightLatency {
+		return leftLatency < rightLatency
+	}
+
+	return left.Index < right.Index
+}
+
+func candidateTier(probe gateway.ProbeResult) int {
+	switch {
+	case probe.GatewayOK && probe.InternetOK:
+		return 2
+	case probe.GatewayOK:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func candidateLatencyScore(probe gateway.ProbeResult) int64 {
+	const unknownLatencyPenaltyMs = int64(4000)
+
+	total := probe.GatewayLatencyMs
+	if total <= 0 {
+		total = unknownLatencyPenaltyMs
+	}
+
+	if probe.InternetOK {
+		if probe.InternetLatencyMs > 0 {
+			total += probe.InternetLatencyMs
+		}
+		return total
+	}
+
+	return total + unknownLatencyPenaltyMs
 }
 
 func pickLatestSuccess(subs []config.Subscription) *config.Subscription {
@@ -819,6 +1017,9 @@ func (m *Manager) intervalsFromConfigLocked() (time.Duration, time.Duration) {
 	if probeMinutes <= 0 {
 		probeMinutes = 60
 	}
+	if len(m.cfg.Proxy.Subscriptions) > 1 && probeMinutes == 60 {
+		probeMinutes = 5
+	}
 	return time.Duration(refreshHours) * time.Hour, time.Duration(probeMinutes) * time.Minute
 }
 
@@ -936,4 +1137,15 @@ func sendInterval(ch chan time.Duration, value time.Duration) {
 	case ch <- value:
 	default:
 	}
+}
+
+func cloneConfig(cfg *config.Config) *config.Config {
+	if cfg == nil {
+		return nil
+	}
+	cloned := *cfg
+	if cfg.Proxy.Subscriptions != nil {
+		cloned.Proxy.Subscriptions = append([]config.Subscription(nil), cfg.Proxy.Subscriptions...)
+	}
+	return &cloned
 }

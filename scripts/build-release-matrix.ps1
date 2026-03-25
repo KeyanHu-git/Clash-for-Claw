@@ -4,7 +4,8 @@ param(
     [string]$Runtime = "win-x64",
     [string]$Platform = "x64",
     [string]$MihomoPath = "",
-    [switch]$SkipBackend
+    [switch]$SkipBackend,
+    [switch]$IncludePortable
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,6 +37,9 @@ function Invoke-BuildInstaller {
 
     if ($SkipBackend) {
         $args += "-SkipBackend"
+    }
+    if ($IncludePortable) {
+        $args += "-IncludePortable"
     }
     if ($DisableBundledMihomo) {
         $args += "-DisableBundledMihomo"

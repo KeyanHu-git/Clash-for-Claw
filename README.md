@@ -3,8 +3,8 @@
 <div align="center">
   <img src="Assets/ClashForClaw-icon-preview.png" alt="Clash for Claw icon" width="88" />
 
-  <p><strong>面向 OpenClaw / Claw 链路的本地代理控制端</strong></p>
-  <p>把订阅接入、后台驻留和链路状态整合进一个开箱即用的 Windows 程序。</p>
+  <p><strong>面向 OpenClaw / Claw 链路的 Windows 本地代理控制端</strong></p>
+  <p>把订阅接入、后台驻留、服务模式和链路状态收进一个可直接安装的桌面程序。</p>
 
   <p>
     <a href="https://github.com/KeyanHu-git/Clash-for-Claw/releases">
@@ -14,7 +14,6 @@
     <a href="https://github.com/KeyanHu-git/Clash-for-Claw/stargazers">
       <img src="https://img.shields.io/github/stars/KeyanHu-git/Clash-for-Claw?style=flat-square&label=Stars" alt="GitHub stars" />
     </a>
-    <img src="https://visitor-badge.laobi.icu/badge?page_id=KeyanHu-git.Clash-for-Claw&left_text=Visitors&left_color=64748b&right_color=14b8a6&style=flat-square" alt="Visitors" />
   </p>
 </div>
 
@@ -22,86 +21,67 @@
   <img src="docs/readme-hero.png" alt="Clash for Claw overview" width="920" />
 </p>
 
-## 安装包
+## 发布形态
 
 - 正式发布物为安装版 `Clash-for-Claw-x.y.z-setup.exe`
-- 安装包默认包含桌面端、后台组件与 `mihomo.exe`
-- 正常使用不需要额外下载运行组件
+- 安装包默认包含桌面端、后台服务组件与 `mihomo.exe`
+- 正常使用不需要额外下载运行时或手动拼装文件夹
 
 当前公开版本：[`v0.1.1`](https://github.com/KeyanHu-git/Clash-for-Claw/releases/tag/v0.1.1)
 
 ## 项目定位
 
-`Clash for Claw` 不是 OpenClaw 的替代品，也不改动 OpenClaw 仓库本身。它负责的是 Windows 侧这层本地控制面，把代理入口、后台驻留和链路状态集中到一个独立的桌面程序里。
+`Clash for Claw` 不是 OpenClaw 的替代品，也不修改 OpenClaw 本地仓库。它负责 Windows 这一层本地控制面，把代理入口、后台驻留、服务模式和链路状态集中到独立程序中。
 
-它主要解决三件事：
+这个项目主要解决四件事：
 
-- 在订阅模式和本地端口之间做统一切换
-- 为后台驻留、开机启动和服务模式提供稳定入口
-- 把本地服务、网关和外网状态集中展示出来，便于排查
+- 在 `订阅模式` 和 `本地端口模式` 之间做统一切换
+- 提供稳定的桌面后台与 `Windows 服务模式`
+- 用一个页面查看本地服务、网关和外网状态
+- 在多订阅场景下实现更稳的自动探测与无感切换
 
-## 首次使用前要准备什么
+## 接入前需要准备
 
-第一次接入通常只需要准备 3 项内容：
+第一次接入通常只需要 3 项内容：
 
 1. `OpenClaw 网关地址`
-   如果网关就在本机，直接先填 `http://127.0.0.1:18789`。
+   本机默认可先试 `http://127.0.0.1:18789`
 
 2. `OpenClaw 访问令牌`
-   对应 OpenClaw 的 `gateway.auth.token`。
+   对应 OpenClaw 的 `gateway.auth.token`
 
 3. `代理入口`
    二选一即可：
-   - `订阅模式`：准备一条支持 `Clash` / `Mihomo` 的订阅 URL
-   - `本地端口`：如果本机已经有现成代理入口，准备好端口号，默认是 `7890`
+   - `订阅模式`：一条支持 `Clash` / `Mihomo` 的订阅 URL
+   - `本地端口模式`：本机已有代理入口时，填写本地端口，默认 `7890`
 
 ## 这些内容从哪里获取
 
-### 1. 网关地址
+### OpenClaw 网关地址
 
-- 本机默认先试 `http://127.0.0.1:18789`
-- 如果需要从 OpenClaw 侧确认，可执行 `openclaw dashboard --no-open`
+- 本机一般直接填写 `http://127.0.0.1:18789`
+- 如需确认，可执行 `openclaw dashboard --no-open`
 
-### 2. 访问令牌
+### OpenClaw 访问令牌
 
 - 可执行 `openclaw config get gateway.auth.token`
-- 也可以直接查看 OpenClaw 配置中的 `gateway.auth.token`
+- 或直接查看 OpenClaw 配置中的 `gateway.auth.token`
 
-如果拿到的是 `http://127.0.0.1:18789/#token=...` 这类完整链接，不要整串粘贴到一个输入框里。  
-在本软件中应当分开填写：
+如果拿到的是 `http://127.0.0.1:18789/#token=...` 这类完整链接，不要整串粘贴到同一个输入框中。应拆开填写：
 
 - `网关地址`：`http://127.0.0.1:18789`
 - `访问令牌`：`#token=` 后面的那段 token
 
-### 3. 订阅 URL
+### 订阅 URL
 
-订阅一般来自代理服务提供方后台的 `Clash` / `Mihomo` 导入入口。本项目不提供订阅，也不内置节点。
+订阅通常来自代理服务提供方后台的 `Clash` / `Mihomo` 导入入口。本项目不提供订阅，也不内置节点。
 
 接入前建议至少确认：
 
-- 能直接提供 `Clash` / `Mihomo` 订阅链接
-- 流量额度、有效期和节点地区与实际场景匹配
+- 提供的是标准 `Clash` / `Mihomo` 订阅链接
+- 流量额度、有效期和节点地区符合实际需求
 - 订阅更新策略明确
-- 服务规则、售后方式和风险说明清楚
-
-## 怎么填写
-
-### 首页
-
-- `网关地址`：填写 OpenClaw 网关地址
-- `访问令牌`：填写 OpenClaw 的 token
-
-### 订阅页
-
-- 把订阅 URL 粘贴到输入框
-- 支持一行一条
-- 点击 `导入 URL`
-- 选中要启用的订阅
-
-### 设置页
-
-- `本地端口`：只在本地端口模式下需要调整
-- 默认值是 `7890`
+- 售后方式、规则说明和风险提示清晰
 
 ## 快速开始
 
@@ -112,31 +92,54 @@
 5. 在“订阅”页导入订阅 URL，或在“设置”页填写本地端口
 6. 回到首页，确认 `本地服务 / 网关 / 外网` 三项状态正常
 
-## 后台与服务模式
+## 运行模式
 
-- 默认可以作为桌面程序常驻运行
-- 可选开启 `Windows 服务模式`
-- 服务模式通常需要管理员权限
-- 如果服务注册失败，程序会提示是否回退为计划任务
+### 订阅模式
 
-数据目录默认分为两处：
+- 软件内置 `mihomo.exe`
+- 探测流量与正式流量分离
+- 候选订阅会在独立 shadow runtime 中探测
+- 正式链路只在最终选定后切换一次，避免探测阶段反复扰动真实流量
+
+### 本地端口模式
+
+- 适合本机已有代理入口的场景
+- 软件只负责接入 OpenClaw，不接管第三方代理本体
+
+### Windows 服务模式
+
+- 可在软件内直接注册与启动
+- 通常需要管理员权限
+- 注册失败时会明确提示，不会静默伪装成服务模式
+- 启用后即使前台窗口关闭，后台仍可继续运行
+
+## 数据目录与日志
+
+默认数据目录分为两处：
 
 - 桌面模式：`%AppData%\ClashForClaw`
 - 服务模式：`%ProgramData%\ClashForClaw`
 
-服务模式使用公共数据目录，是为了避免把运行时数据绑死在安装目录里。这样更新、覆盖安装或移动程序目录时，后台配置和日志不会一起丢失。
+这样做是为了让升级、覆盖安装或移动程序目录时，运行数据、配置和日志不会跟着安装目录一起丢失。
 
-## 运行说明
+日志相关行为如下：
 
-- 默认围绕本地代理入口工作，不改写整机网络出口
-- 默认监听 `127.0.0.1`
-- 配置、日志和状态信息都保存在本地
-- OpenClaw 仓库可以独立更新，不依赖本项目的发布节奏
+- 桌面日志目录可在软件“日志”页中手动选择
+- 软件会记住上次设置的桌面日志目录
+- 服务模式日志固定写入服务目录，便于排障
+- 日志仅保存在本机
 
-补充说明：
+## 设计约束
+
+- 不修改 OpenClaw 本地仓库
+- 不依赖 OpenClaw 的目录结构或更新节奏
+- 默认只监听 `127.0.0.1`
+- 不把整机网络出口强制重写为系统全局代理
+
+需要注意：
 
 - 在 Docker Desktop 环境中，`host.docker.internal` 仍可能访问宿主机 loopback 端口，因此这不是物理隔离
-- 如果当前网络无法访问 GitHub，也可以手动将 `mihomo.exe` 放到应用目录下的 `bin` 中
+- 若当前网络无法访问 GitHub，也可手动将 `mihomo.exe` 放入程序目录下的 `bin` 中
 
 ## 构建
 
@@ -149,20 +152,15 @@ dotnet build ClashForClaw.csproj -p:Platform=x64
 生成默认发布包：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-release-matrix.ps1 -Version 0.1.1 -MihomoPath C:\path\to\mihomo.exe
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-release-matrix.ps1 -Version 0.1.1
 ```
 
-单独生成安装版 `.exe`：
+单独生成安装版：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Version 0.1.1 -MihomoPath C:\path\to\mihomo.exe
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Version 0.1.1
 ```
 
 ## 协议
 
 本项目采用 [MIT License](LICENSE)。
-
-## 致谢
-
-- 数字生命背景动效参考：Shelter / MrIShelter，《一起赛博摸鱼吧——数学公式下的生命构型与动态》  
-  来源：[和鲸社区](https://www.heywhale.com/mw/project/687e3f38c678037e34ebf61e)

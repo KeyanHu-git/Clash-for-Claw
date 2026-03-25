@@ -3,6 +3,7 @@ package runtime
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -35,6 +36,14 @@ func PeekPaths(baseOverride string) Paths {
 
 func PeekServicePaths(baseOverride string) Paths {
 	return buildPaths(resolveBaseDir(baseOverride, true))
+}
+
+func PeekUserPaths() Paths {
+	return buildPaths(defaultUserBaseDir())
+}
+
+func PeekDefaultServicePaths() Paths {
+	return buildPaths(defaultServiceBaseDir())
 }
 
 func resolvePaths(baseOverride string, serviceMode bool) (Paths, error) {
@@ -79,16 +88,9 @@ func resolveBaseDir(baseOverride string, serviceMode bool) string {
 		}
 	}
 	if serviceMode {
-		programData := os.Getenv("ProgramData")
-		if trimmed := filepath.Clean(programData); programData != "" && trimmed != "." {
-			return filepath.Join(trimmed, AppFolderName)
-		}
+		return defaultServiceBaseDir()
 	}
-	base, err := os.UserConfigDir()
-	if err != nil || base == "" {
-		base = "."
-	}
-	return filepath.Join(base, AppFolderName)
+	return defaultUserBaseDir()
 }
 
 func purgeLegacyBaseDir(serviceMode bool) {
@@ -111,4 +113,27 @@ func legacyBaseDir(serviceMode bool) string {
 		base = "."
 	}
 	return filepath.Join(base, legacyAppFolderName)
+}
+
+func SameBaseDir(left string, right string) bool {
+	if strings.TrimSpace(left) == "" || strings.TrimSpace(right) == "" {
+		return false
+	}
+	return strings.EqualFold(filepath.Clean(left), filepath.Clean(right))
+}
+
+func defaultUserBaseDir() string {
+	base, err := os.UserConfigDir()
+	if err != nil || base == "" {
+		base = "."
+	}
+	return filepath.Join(base, AppFolderName)
+}
+
+func defaultServiceBaseDir() string {
+	programData := os.Getenv("ProgramData")
+	if trimmed := filepath.Clean(programData); programData != "" && trimmed != "." {
+		return filepath.Join(trimmed, AppFolderName)
+	}
+	return defaultUserBaseDir()
 }

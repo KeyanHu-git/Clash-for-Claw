@@ -59,13 +59,13 @@ func NewServer(paths runtime.Paths, allowSelfShutdown bool) (*Server, error) {
 		done:              make(chan error, 1),
 	}
 	server.subMgr = subscription.NewManager(paths, cfg, server.proxyMgr)
-	server.subMgr.Start()
 	server.router = server.routes()
 	server.httpServer = &http.Server{
 		Addr:    server.bindAddr(),
 		Handler: server.router,
 	}
 	server.applyConfig(cfg)
+	server.subMgr.Start()
 	return server, nil
 }
 

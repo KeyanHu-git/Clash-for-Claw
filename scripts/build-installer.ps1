@@ -9,6 +9,7 @@ param(
     [Alias("AdapterSourceDir")][string]$BackendSourceDir = "",
     [string]$MihomoPath = "",
     [string]$InnoCompilerPath = "",
+    [switch]$IncludePortable,
     [switch]$DisableBundledMihomo,
     [Alias("SkipAdapter")][switch]$SkipBackend
 )
@@ -339,7 +340,9 @@ if (Test-Path $setupExe) {
     Remove-Item $setupExe -Force
 }
 
-[System.IO.Compression.ZipFile]::CreateFromDirectory($publishDir, $portableZip, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+if ($IncludePortable) {
+    [System.IO.Compression.ZipFile]::CreateFromDirectory($publishDir, $portableZip, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+}
 
 $compilerPath = Resolve-InnoSetupCompiler -ExplicitPath $InnoCompilerPath
 $archConfig = Get-InnoSetupArchConfig -RuntimeId $Runtime
@@ -375,5 +378,7 @@ if (-not (Test-Path $setupExe)) {
     throw "Installer output not found at $setupExe."
 }
 
-Write-Output "Portable package: $portableZip"
 Write-Output "Installer package: $setupExe"
+if ($IncludePortable -and (Test-Path $portableZip)) {
+    Write-Output "Portable package: $portableZip"
+}

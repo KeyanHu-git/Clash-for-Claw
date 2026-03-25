@@ -19,7 +19,7 @@ public sealed class CliRunner
         }
 
         var cliPath = AppPaths.ResolveCliPath(settings.CliPath);
-        var args = settings.CliArgs ?? string.Empty;
+        var args = BuildDesktopBackendArguments(settings.CliArgs ?? string.Empty);
         var logDirectory = AppPaths.ResolveDesktopLogDirectory(settings.LogDirectory);
         var launchSignature = BuildLaunchSignature(cliPath, args, logDirectory);
 
@@ -40,7 +40,7 @@ public sealed class CliRunner
     public bool TryStartOnDemand(AppSettings settings, int port)
     {
         var cliPath = AppPaths.ResolveCliPath(settings.CliPath);
-        var args = settings.CliArgs ?? string.Empty;
+        var args = BuildDesktopBackendArguments(settings.CliArgs ?? string.Empty);
         var logDirectory = AppPaths.ResolveDesktopLogDirectory(settings.LogDirectory);
         var launchSignature = BuildLaunchSignature(cliPath, args, logDirectory);
 
@@ -113,6 +113,18 @@ public sealed class CliRunner
 
     private static string BuildLaunchSignature(string cliPath, string args, string logDirectory)
         => $"\"{cliPath}\" {args} | logdir=\"{logDirectory}\"".Trim();
+
+    private static string BuildDesktopBackendArguments(string args)
+    {
+        var trimmed = string.IsNullOrWhiteSpace(args) ? string.Empty : args.Trim();
+        var sharedBaseDir = QuoteArgument(AppPaths.ServiceBaseDirectory);
+        return string.IsNullOrWhiteSpace(trimmed)
+            ? $"--base-dir {sharedBaseDir}"
+            : $"{trimmed} --base-dir {sharedBaseDir}";
+    }
+
+    private static string QuoteArgument(string value)
+        => $"\"{value.Replace("\"", "\\\"")}\"";
 
     private bool Start(string cliPath, string args, string logDirectory, bool trackProcess)
     {

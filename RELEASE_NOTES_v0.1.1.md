@@ -1,12 +1,22 @@
 # Clash for Claw v0.1.1
 
-## Highlights
+## 重点更新
 
-- Added a real Windows `setup.exe` installer instead of shipping only raw build output.
-- Switched release publishing to an untrimmed self-contained WinUI build so the app can launch reliably on end-user machines.
-- Bundled the adapter executable into the installer build used for release packaging on the maintainer machine.
-- Added install, uninstall, and Start Menu registration for the desktop app.
+- 发布形态收敛为安装版 `setup.exe`，安装后即可直接使用
+- 安装包默认包含桌面程序、后台服务组件与 `mihomo.exe`
+- 服务模式与桌面模式的运行配置进一步对齐，切换与恢复更稳定
+- 订阅模式改为“探测面 / 正式流量面”分离
+- 候选订阅在独立 shadow runtime 中探测，正式链路只在最终决策后切换一次
+- 删除最后一条订阅、缺失订阅流量头、后台恢复等边界情况已补齐处理
+- 增加订阅切换顺序、长时间抖动、并发 failover 与真实韧性测试
 
-## Files
+## 发布物
 
-- `Clash-for-Claw-0.1.1-setup.exe`: recommended installer for most users
+- `Clash-for-Claw-0.1.1-setup.exe`
+
+## 升级说明
+
+- 可直接覆盖安装
+- 桌面模式数据目录：`%AppData%\ClashForClaw`
+- 服务模式数据目录：`%ProgramData%\ClashForClaw`
+- 若已启用 Windows 服务模式，建议升级后执行一次服务状态确认

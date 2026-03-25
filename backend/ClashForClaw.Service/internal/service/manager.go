@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/kardianos/service"
 
-	"clash-for-claw-service/internal/config"
 	"clash-for-claw-service/internal/runtime"
 )
 
@@ -88,7 +86,7 @@ func (m *Manager) Install() (Mode, error) {
 		m.cleanupLegacyArtifacts()
 		return ModeTask, nil
 	}
-	taskErr := installTask(m.exe, m.userPaths.BaseDir)
+	taskErr := installTask(m.exe, m.servicePaths.BaseDir)
 	if taskErr == nil {
 		m.cleanupLegacyArtifacts()
 		return ModeTask, nil
@@ -110,6 +108,11 @@ func (m *Manager) Uninstall() error {
 	var errs []error
 	if taskRegistered {
 		if err := uninstallTask(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if mode == ModeService {
+		if err := runtime.SyncOperationalConfig(m.servicePaths, m.userPaths); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -177,12 +180,15 @@ func (m *Manager) Stop() error {
 	switch {
 	case mode == ModeService:
 		if status == service.StatusStopped {
-			return nil
+			return runtime.SyncOperationalConfig(m.servicePaths, m.userPaths)
 		}
 		if err := m.stopService(); err != nil {
 			return err
 		}
-		return m.waitForServiceStopped()
+		if err := m.waitForServiceStopped(); err != nil {
+			return err
+		}
+		return runtime.SyncOperationalConfig(m.servicePaths, m.userPaths)
 	case taskRegistered:
 		return stopTask()
 	default:
@@ -374,85 +380,7 @@ func (m *Manager) prepareServiceBase() error {
 	if err := ensureServiceAccess(m.servicePaths); err != nil {
 		return err
 	}
-	return syncServiceConfig(m.userPaths, m.servicePaths)
-}
-
-func syncServiceConfig(userPaths runtime.Paths, servicePaths runtime.Paths) error {
-	userInfo, err := os.Stat(userPaths.ConfigPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-	serviceInfo, err := os.Stat(servicePaths.ConfigPath)
-	if err == nil && !userInfo.ModTime().After(serviceInfo.ModTime()) {
-		return nil
-	}
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	userCfg, err := config.LoadOrInit(userPaths.ConfigPath)
-	if err != nil {
-		return err
-	}
-	serviceCfg := *userCfg
-	if userCfg.Proxy.Subscriptions != nil {
-		serviceCfg.Proxy.Subscriptions = append([]config.Subscription(nil), userCfg.Proxy.Subscriptions...)
-	}
-	if err := copySubscriptionFiles(&serviceCfg, servicePaths); err != nil {
-		return err
-	}
-	return config.Save(servicePaths.ConfigPath, &serviceCfg)
-}
-
-func copySubscriptionFiles(cfg *config.Config, servicePaths runtime.Paths) error {
-	if cfg == nil || len(cfg.Proxy.Subscriptions) == 0 {
-		return nil
-	}
-	destDir := filepath.Join(servicePaths.RuntimeDir, "subscriptions")
-	if err := os.MkdirAll(destDir, 0o755); err != nil {
-		return err
-	}
-	for i := range cfg.Proxy.Subscriptions {
-		sub := &cfg.Proxy.Subscriptions[i]
-		if strings.TrimSpace(sub.FilePath) == "" {
-			continue
-		}
-		if _, err := os.Stat(sub.FilePath); err != nil {
-			continue
-		}
-		name := filepath.Base(sub.FilePath)
-		if sub.ID != "" {
-			name = sub.ID + "-" + name
-		}
-		destPath := filepath.Join(destDir, name)
-		if err := copyFile(sub.FilePath, destPath); err != nil {
-			return fmt.Errorf("copy subscription %s: %w", sub.ID, err)
-		}
-		sub.FilePath = destPath
-	}
-	return nil
-}
-
-func copyFile(src string, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	if _, err := io.Copy(out, in); err != nil {
-		return err
-	}
-	return out.Close()
+	return runtime.SyncOperationalConfig(m.userPaths, m.servicePaths)
 }
 
 type noopService struct{}

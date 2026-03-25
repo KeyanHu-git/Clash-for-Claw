@@ -556,22 +556,29 @@ func writeFakeToolConfig(t *testing.T, path string, cfg fakeToolConfig) {
 }
 
 func newTestManager() *Manager {
+	root, err := os.MkdirTemp("", "clashforclaw-service-manager-test-*")
+	if err != nil {
+		panic(err)
+	}
+
+	userBase := filepath.Join(root, "user")
+	serviceBase := filepath.Join(root, "service")
 	return &Manager{
 		userPaths: runtime.Paths{
-			BaseDir:    `C:\Users\Test\AppData\Roaming\ClashForClaw`,
-			ConfigPath: `C:\Users\Test\AppData\Roaming\ClashForClaw\config.json`,
-			RuntimeDir: `C:\Users\Test\AppData\Roaming\ClashForClaw\runtime`,
-			BinDir:     `C:\Users\Test\AppData\Roaming\ClashForClaw\bin`,
-			LogsDir:    `C:\Users\Test\AppData\Roaming\ClashForClaw\logs`,
-			MihomoDir:  `C:\Users\Test\AppData\Roaming\ClashForClaw\mihomo`,
+			BaseDir:    userBase,
+			ConfigPath: filepath.Join(userBase, "config.json"),
+			RuntimeDir: filepath.Join(userBase, "runtime"),
+			BinDir:     filepath.Join(userBase, "bin"),
+			LogsDir:    filepath.Join(userBase, "logs"),
+			MihomoDir:  filepath.Join(userBase, "mihomo"),
 		},
 		servicePaths: runtime.Paths{
-			BaseDir:    `C:\ProgramData\ClashForClaw`,
-			ConfigPath: `C:\ProgramData\ClashForClaw\config.json`,
-			RuntimeDir: `C:\ProgramData\ClashForClaw\runtime`,
-			BinDir:     `C:\ProgramData\ClashForClaw\bin`,
-			LogsDir:    `C:\ProgramData\ClashForClaw\logs`,
-			MihomoDir:  `C:\ProgramData\ClashForClaw\mihomo`,
+			BaseDir:    serviceBase,
+			ConfigPath: filepath.Join(serviceBase, "config.json"),
+			RuntimeDir: filepath.Join(serviceBase, "runtime"),
+			BinDir:     filepath.Join(serviceBase, "bin"),
+			LogsDir:    filepath.Join(serviceBase, "logs"),
+			MihomoDir:  filepath.Join(serviceBase, "mihomo"),
 		},
 		exe: `C:\Program Files\ClashForClaw\ClashForClaw.Service.exe`,
 	}

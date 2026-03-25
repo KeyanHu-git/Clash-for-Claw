@@ -1,9 +1,10 @@
-﻿package proxy
+package proxy
 
 import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"clash-for-claw-service/internal/config"
@@ -30,6 +31,7 @@ func (m *Manager) Billing(ctx context.Context) BillingStatus {
 	m.mu.Lock()
 	controllerPort := m.controllerPort
 	secret := m.controllerSecret
+	cfg := cloneConfig(m.activeCfg)
 	m.mu.Unlock()
 
 	if status.Mode != config.ProxyModeSubscription {
@@ -57,6 +59,9 @@ func (m *Manager) Billing(ctx context.Context) BillingStatus {
 
 	usage, err := mihomo.FetchSubscriptionUsage(ctx, controllerPort, secret)
 	if err != nil {
+		if cached, ok := cachedBillingStatus(cfg); ok {
+			return cached
+		}
 		return BillingStatus{
 			Upload:   0,
 			Download: 0,
@@ -114,6 +119,81 @@ func (m *Manager) Billing(ctx context.Context) BillingStatus {
 	}
 }
 
+func cachedBillingStatus(cfg *config.Config) (BillingStatus, bool) {
+	if cfg == nil {
+		return BillingStatus{}, false
+	}
+
+	sub := activeSubscription(cfg)
+	if sub == nil {
+		return BillingStatus{}, false
+	}
+	if sub.UsageLimit <= 0 && sub.ExpireAt <= 0 && sub.UpdatedAt <= 0 {
+		return BillingStatus{}, false
+	}
+
+	updatedAt := ""
+	if sub.UpdatedAt > 0 {
+		updatedAt = time.Unix(sub.UpdatedAt, 0).Format(time.RFC3339)
+	}
+
+	state := strings.TrimSpace(sub.State)
+	if state == "" {
+		state = "unknown"
+		if sub.UsageLimit > 0 {
+			state = "active"
+		}
+	}
+
+	note := "Using cached subscription metadata."
+	if strings.TrimSpace(sub.Name) != "" {
+		note = fmt.Sprintf("Cached subscription: %s", sub.Name)
+	}
+
+	unit := strings.TrimSpace(sub.UsageUnit)
+	if unit == "" {
+		unit = "GB"
+	}
+
+	return BillingStatus{
+		Used:      sub.UsageUsed,
+		Limit:     sub.UsageLimit,
+		Unit:      unit,
+		State:     state,
+		Note:      note,
+		Provider:  sub.Name,
+		ExpireAt:  sub.ExpireAt,
+		UpdatedAt: updatedAt,
+		Source:    "subscription_cache",
+	}, true
+}
+
+func activeSubscription(cfg *config.Config) *config.Subscription {
+	if cfg == nil {
+		return nil
+	}
+
+	activeID := strings.TrimSpace(cfg.Proxy.ActiveSubscriptionId)
+	if activeID != "" {
+		for i := range cfg.Proxy.Subscriptions {
+			if cfg.Proxy.Subscriptions[i].ID == activeID {
+				return &cfg.Proxy.Subscriptions[i]
+			}
+		}
+	}
+
+	activeURL := strings.TrimSpace(cfg.Proxy.SubscriptionURL)
+	if activeURL != "" {
+		for i := range cfg.Proxy.Subscriptions {
+			if strings.EqualFold(strings.TrimSpace(cfg.Proxy.Subscriptions[i].URL), activeURL) {
+				return &cfg.Proxy.Subscriptions[i]
+			}
+		}
+	}
+
+	return nil
+}
+
 func bytesToGB(value int64) float64 {
 	if value <= 0 {
 		return 0
@@ -121,4 +201,3 @@ func bytesToGB(value int64) float64 {
 	gb := float64(value) / 1_000_000_000
 	return math.Round(gb*100) / 100
 }
-

@@ -13,9 +13,11 @@ import (
 )
 
 type ProbeResult struct {
-	GatewayOK  bool   `json:"gateway_ok"`
-	InternetOK bool   `json:"internet_ok"`
-	Error      string `json:"error,omitempty"`
+	GatewayOK        bool   `json:"gateway_ok"`
+	InternetOK       bool   `json:"internet_ok"`
+	GatewayLatencyMs int64  `json:"gateway_latency_ms,omitempty"`
+	InternetLatencyMs int64 `json:"internet_latency_ms,omitempty"`
+	Error            string `json:"error,omitempty"`
 }
 
 func Probe(ctx context.Context, rawURL string, proxyURL string) ProbeResult {
@@ -27,8 +29,9 @@ func Probe(ctx context.Context, rawURL string, proxyURL string) ProbeResult {
 
 	wsURLs := buildCandidateWSURLs(rawURL)
 	for _, candidate := range wsURLs {
-		if err := probeWebSocket(ctx, candidate, proxyURL); err == nil {
+		if latency, err := probeWebSocket(ctx, candidate, proxyURL); err == nil {
 			result.GatewayOK = true
+			result.GatewayLatencyMs = latency.Milliseconds()
 			break
 		}
 	}
@@ -36,8 +39,9 @@ func Probe(ctx context.Context, rawURL string, proxyURL string) ProbeResult {
 		result.Error = "gateway_unreachable"
 	}
 
-	if err := probeInternet(ctx, proxyURL); err == nil {
+	if latency, err := probeInternet(ctx, proxyURL); err == nil {
 		result.InternetOK = true
+		result.InternetLatencyMs = latency.Milliseconds()
 	} else if result.Error == "" {
 		result.Error = "internet_unreachable"
 	}
@@ -64,7 +68,7 @@ func buildCandidateWSURLs(raw string) []string {
 	return []string{raw}
 }
 
-func probeWebSocket(ctx context.Context, wsURL string, proxyURL string) error {
+func probeWebSocket(ctx context.Context, wsURL string, proxyURL string) (time.Duration, error) {
 	dialer := websocket.Dialer{}
 	if proxyURL != "" && !isLoopbackWS(wsURL) {
 		if proxyParsed, err := url.Parse(proxyURL); err == nil {
@@ -76,12 +80,13 @@ func probeWebSocket(ctx context.Context, wsURL string, proxyURL string) error {
 	if origin := wsOrigin(wsURL); origin != "" {
 		headers.Set("Origin", origin)
 	}
+	startedAt := time.Now()
 	conn, _, err := dialer.DialContext(ctx, wsURL, headers)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	_ = conn.Close()
-	return nil
+	return time.Since(startedAt), nil
 }
 
 func isLoopbackWS(wsURL string) bool {
@@ -122,7 +127,7 @@ func wsOrigin(wsURL string) string {
 	return parsed.Scheme + "://" + parsed.Host
 }
 
-func probeInternet(ctx context.Context, proxyURL string) error {
+func probeInternet(ctx context.Context, proxyURL string) (time.Duration, error) {
 	targets := []string{
 		"https://www.gstatic.com/generate_204",
 		"https://cp.cloudflare.com/generate_204",
@@ -136,7 +141,7 @@ func probeInternet(ctx context.Context, proxyURL string) error {
 	return probeInternetTargets(ctx, targets, "")
 }
 
-func probeInternetTargets(ctx context.Context, targets []string, proxyURL string) error {
+func probeInternetTargets(ctx context.Context, targets []string, proxyURL string) (time.Duration, error) {
 	tr := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -153,6 +158,7 @@ func probeInternetTargets(ctx context.Context, targets []string, proxyURL string
 	var lastErr error
 	for _, target := range targets {
 		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+		startedAt := time.Now()
 		resp, err := client.Do(req)
 		if err != nil {
 			lastErr = err
@@ -161,12 +167,12 @@ func probeInternetTargets(ctx context.Context, targets []string, proxyURL string
 		_ = resp.Body.Close()
 		// Any non-5xx means the network path is reachable.
 		if resp.StatusCode < 500 {
-			return nil
+			return time.Since(startedAt), nil
 		}
 		lastErr = errors.New("unexpected_status")
 	}
 	if lastErr != nil {
-		return lastErr
+		return 0, lastErr
 	}
-	return errors.New("internet_probe_failed")
+	return 0, errors.New("internet_probe_failed")
 }

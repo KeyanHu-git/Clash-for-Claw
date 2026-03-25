@@ -1,4 +1,4 @@
-﻿//go:build windows
+//go:build windows
 
 package service
 
@@ -24,13 +24,21 @@ func ensureServiceAccess(paths runtime.Paths) error {
 		}
 	}
 
-	// LocalService uses SID S-1-5-19; grant modify once at the service root so
-	// the service can rotate logs, update config, and manage the embedded runtime.
-	cmd := exec.Command("icacls", paths.BaseDir, "/grant", "*S-1-5-19:(OI)(CI)M", "/T", "/C")
+	// Keep one shared runtime base for both the interactive desktop daemon and
+	// the LocalService-hosted Windows service.
+	cmd := exec.Command(
+		"icacls",
+		paths.BaseDir,
+		"/grant",
+		"*S-1-5-19:(OI)(CI)M",
+		"/grant",
+		"*S-1-5-32-545:(OI)(CI)M",
+		"/T",
+		"/C",
+	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("grant_localservice_access_failed: %w (%s)", err, string(output))
 	}
 	return nil
 }
-
