@@ -3,8 +3,9 @@
 <div align="center">
   <img src="Assets/ClashForClaw-icon-preview.png" alt="Clash for Claw icon" width="88" />
 
-  <p><strong>面向 OpenClaw / Claw 链路的 Windows 本地代理控制端</strong></p>
-  <p>把订阅接入、后台驻留、服务模式和链路状态收进一个可直接安装的桌面程序。</p>
+  <p><strong>面向 OpenClaw / Claw 的 Windows 桌面代理控制端</strong></p>
+  <p>把 mihomo / Clash 订阅接入、本地端口接入、Windows 服务模式和链路状态收进一个可直接安装的桌面程序。</p>
+  <p><strong>Windows desktop proxy control panel for OpenClaw / Claw, with mihomo subscription mode, local port mode, Windows service mode, and seamless failover switching.</strong></p>
 
   <p>
     <a href="https://github.com/KeyanHu-git/Clash-for-Claw/releases">
@@ -28,6 +29,14 @@
 - 正常使用不需要额外下载运行时或手动拼装文件夹
 
 当前公开版本：[`v0.1.1`](https://github.com/KeyanHu-git/Clash-for-Claw/releases/tag/v0.1.1)
+
+## 核心能力
+
+- `OpenClaw / Claw` 本地代理接入
+- `mihomo / Clash` 订阅模式
+- `本地端口` 模式
+- `Windows 服务模式`
+- `多订阅自动探测` 与 `无感切换`
 
 ## 项目定位
 
