@@ -11,7 +11,8 @@ param(
     [int]$WarmupSeconds = 20,
     [int]$SampleCount = 6,
     [int]$SampleIntervalSeconds = 5,
-    [int]$RequestTimeoutSeconds = 10
+    [int]$RequestTimeoutSeconds = 10,
+    [switch]$SkipRecovery
 )
 
 $ErrorActionPreference = "Stop"
@@ -280,6 +281,23 @@ try {
         Start-Sleep -Seconds $SampleIntervalSeconds
     }
 
+    $sampleFailures = @($result.Samples | Where-Object { -not $_.Ok -or -not $_.GatewayOk -or -not $_.InternetOk -or $_.Error })
+    $result.SampleFailureCount = $sampleFailures.Count
+    Save-Json -Path $resultPath -Value $result
+
+    if ($sampleFailures.Count -gt 0) {
+        throw "Observed $($sampleFailures.Count) unhealthy or timed-out subscription samples during soak."
+    }
+
+    if ($SkipRecovery) {
+        $result.Recovery = [pscustomobject]@{
+            Skipped = $true
+        }
+        Save-Json -Path $resultPath -Value $result
+        $result | ConvertTo-Json -Depth 8
+        return
+    }
+
     $mihomoPid = Get-PortOwner -Ports @($MixedPort, $ControllerPort)
     if (-not $mihomoPid) {
         throw "Failed to locate isolated mihomo process on ports $MixedPort/$ControllerPort"
@@ -316,14 +334,6 @@ try {
         FinalEffectiveMode = if ($recoveryStatus) { $recoveryStatus.proxy.effective_mode } else { "" }
     }
     Save-Json -Path $resultPath -Value $result
-
-    $sampleFailures = @($result.Samples | Where-Object { -not $_.Ok -or -not $_.GatewayOk -or -not $_.InternetOk -or $_.Error })
-    $result.SampleFailureCount = $sampleFailures.Count
-    Save-Json -Path $resultPath -Value $result
-
-    if ($sampleFailures.Count -gt 0) {
-        throw "Observed $($sampleFailures.Count) unhealthy or timed-out subscription samples during soak."
-    }
 
     if (-not $recovered) {
         throw "Isolated subscription runtime did not recover after mihomo kill."
