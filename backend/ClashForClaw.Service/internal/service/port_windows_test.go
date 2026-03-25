@@ -35,18 +35,23 @@ func TestEnsureServicePortFreeStopsMatchingOwner(t *testing.T) {
 	}
 }
 
-func TestEnsureServicePortFreeStopsMatchingOwnerFromDifferentPath(t *testing.T) {
+func TestEnsureServicePortFreeKeepsSameNameOwnerFromDifferentPath(t *testing.T) {
 	port := 13133
 	ownerExe := buildPortOwnerHelperNamed(t, filepath.Join(t.TempDir(), "owner", "ClashForClaw.Service.exe"))
 	cmd := startPortOwnerHelper(t, ownerExe, port)
 
 	expectedExe := buildPortOwnerHelperNamed(t, filepath.Join(t.TempDir(), "expected", "ClashForClaw.Service.exe"))
 	cfgPath := writeServicePortConfig(t, port)
-	if err := ensureServicePortFree(expectedExe, cfgPath); err != nil {
-		t.Fatalf("ensureServicePortFree returned error for same-name different-path owner: %v", err)
+	err := ensureServicePortFree(expectedExe, cfgPath)
+	if err == nil {
+		t.Fatal("ensureServicePortFree succeeded for a same-name different-path owner")
 	}
-
-	waitForProcessExit(t, cmd.Process.Pid, 3*time.Second)
+	if !strings.Contains(err.Error(), fmt.Sprintf("service_port_%d_in_use_by_", port)) {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !winproc.IsProcessRunning(cmd.Process.Pid) {
+		t.Fatalf("same-name different-path owner process %d was terminated unexpectedly", cmd.Process.Pid)
+	}
 }
 
 func TestEnsureServicePortFreeKeepsForeignOwner(t *testing.T) {

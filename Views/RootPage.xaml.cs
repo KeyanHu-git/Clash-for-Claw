@@ -25,9 +25,9 @@ public partial class RootPage : Page
     private const double DefaultHeightRatio = 0.56;
     private const double MinWidthRatio = 0.24;
     private const double MinHeightRatio = 0.3;
-    private const double NavCompactWidth = 72.0;
-    private const double NavExpandedWidth = 186.0;
-    private const double NavExpandedBreakpointWidth = 860.0;
+    private const double NavCompactWidth = 76.0;
+    private const double NavExpandedWidth = 192.0;
+    private const double NavExpandedBreakpointWidth = 780.0;
     private const double NavExpandedIconWidth = 34.0;
     private const double NavPaddingExpanded = 8.0;
     private const double NavContentInset = 20.0;
@@ -273,10 +273,10 @@ public partial class RootPage : Page
     private void UpdateBackgroundMotion()
     {
         var highContrast = IsHighContrastEnabled();
-        var allowMotion = uiSettings.AnimationsEnabled && !highContrast && !isWindowInteractionActive;
-        var showLayer = !highContrast;
-        FluidCanvas.Visibility = showLayer ? Visibility.Visible : Visibility.Collapsed;
-        JellyfishLayer.Visibility = showLayer ? Visibility.Visible : Visibility.Collapsed;
+        var showDynamicLayer = !highContrast && !isWindowInteractionActive;
+        var allowMotion = uiSettings.AnimationsEnabled && showDynamicLayer;
+        FluidCanvas.Visibility = showDynamicLayer ? Visibility.Visible : Visibility.Collapsed;
+        JellyfishLayer.Visibility = showDynamicLayer ? Visibility.Visible : Visibility.Collapsed;
 
         if (backgroundStoryboard is not null)
         {
@@ -504,10 +504,11 @@ public partial class RootPage : Page
     {
         SetTemplateOpacity(item, "SelectionLayer", isActive ? 1 : 0);
         SetTemplateOpacity(item, "SelectionRailFlow", isActive ? 0.74 : 0);
+        SetTemplateOpacity(item, "SelectionCue", 0);
+        SetTemplateOpacity(item, "SelectionSheen", 0);
         if (!isActive)
         {
             SetTemplateOpacity(item, "SelectionAura", 0);
-            SetTemplateOpacity(item, "SelectionSheen", 0);
         }
     }
 

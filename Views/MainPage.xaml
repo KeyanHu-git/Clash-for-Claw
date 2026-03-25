@@ -234,15 +234,15 @@
 
                             <Border x:Name="MetricProfileCard" Style="{StaticResource MetricTile}">
                                 <StackPanel Spacing="3">
-                                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="运行方式" />
-                                    <TextBlock FontWeight="SemiBold" Text="{Binding BackgroundProfileTitle}" />
-                                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="{Binding ShellResidencyText}" TextWrapping="WrapWholeWords" />
+                                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="当前驻留" />
+                                    <TextBlock FontWeight="SemiBold" Text="{Binding ShellResidencyText}" TextWrapping="WrapWholeWords" />
+                                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="{Binding BackgroundProfileTitle}" TextWrapping="WrapWholeWords" />
                                 </StackPanel>
                             </Border>
 
                             <Border x:Name="MetricModeCard" Grid.Column="1" Style="{StaticResource MetricTile}">
                                 <StackPanel Spacing="3">
-                                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="工作模式" />
+                                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="当前链路" />
                                     <TextBlock FontWeight="SemiBold" Text="{Binding ModeSummary}" />
                                     <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="{Binding ConnectivitySummary}" TextWrapping="WrapWholeWords" />
                                 </StackPanel>
@@ -324,7 +324,6 @@
                             <StackPanel Spacing="4">
                                 <TextBlock Style="{StaticResource SectionTitle}" Text="链路诊断" />
                                 <TextBlock Style="{StaticResource MutedText}" FontSize="12" Text="查看本地服务、网关和外网状态。" />
-                                <TextBlock FontWeight="SemiBold" Text="{Binding ConnectivitySummary}" TextWrapping="WrapWholeWords" />
                             </StackPanel>
 
                             <Grid Grid.Row="1" ColumnSpacing="8" RowSpacing="8">
@@ -402,6 +401,7 @@
                                     PasswordChanged="OnTokenPasswordChanged" />
                                 <ToggleSwitch
                                     x:Name="SystemProxySwitch"
+                                    Header="系统代理"
                                     IsOn="False"
                                     OffContent="系统代理已关闭"
                                     OnContent="系统代理已开启"

@@ -6,9 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"clash-for-claw-service/internal/config"
@@ -66,27 +63,12 @@ func ensureServicePortFree(serviceExe string, configPath string) error {
 }
 
 func processMatchesServiceExecutable(pid int, serviceExe string) (bool, error) {
-	expectedName := filepath.Base(serviceExe)
-	imagePath, pathErr := winproc.ProcessImagePath(pid)
-	if pathErr == nil {
-		if winproc.SameExecutablePath(imagePath, serviceExe) {
-			return true, nil
-		}
-
-		if strings.EqualFold(filepath.Base(imagePath), expectedName) {
-			return true, nil
-		}
+	imagePath, err := winproc.ProcessImagePath(pid)
+	if err != nil {
+		return false, err
 	}
 
-	imageName, nameErr := processImageName(pid)
-	if nameErr != nil {
-		if pathErr != nil {
-			return false, pathErr
-		}
-		return false, nameErr
-	}
-
-	return strings.EqualFold(imageName, expectedName), nil
+	return winproc.SameExecutablePath(imagePath, serviceExe), nil
 }
 
 func serviceHTTPPort(configPath string) (int, error) {
@@ -98,29 +80,6 @@ func serviceHTTPPort(configPath string) (int, error) {
 		return cfg.HTTP.Port, nil
 	}
 	return config.DefaultHTTPPort, nil
-}
-
-func processImageName(pid int) (string, error) {
-	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/FO", "CSV", "/NH")
-	output, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-
-	line := strings.TrimSpace(string(output))
-	if line == "" || strings.HasPrefix(line, "INFO:") {
-		return "", fmt.Errorf("tasklist_missing_%d", pid)
-	}
-
-	line = strings.Trim(line, "\r\n")
-	if strings.HasPrefix(line, "\"") && strings.Contains(line, "\",\"") {
-		parts := strings.Split(line, "\",\"")
-		if len(parts) > 0 {
-			return strings.Trim(parts[0], "\""), nil
-		}
-	}
-
-	return "", fmt.Errorf("tasklist_parse_%d", pid)
 }
 
 func isProcessRunning(pid int) bool {

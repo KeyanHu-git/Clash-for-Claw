@@ -221,7 +221,7 @@
                                     VerticalAlignment="Top"
                                     Height="8"
                                     Background="{StaticResource NavSelectedSheenBrush}"
-                                    Opacity="0.12"
+                                    Opacity="0"
                                     RenderTransformOrigin="0.5,0.5">
                                     <Border.RenderTransform>
                                         <CompositeTransform x:Name="SelectionSheenTransform" TranslateX="-4" />
@@ -249,7 +249,7 @@
                                     CornerRadius="2"
                                     HorizontalAlignment="Left"
                                     Background="{StaticResource NavSelectedCueBrush}"
-                                    Opacity="0.82" />
+                                    Opacity="0" />
 
                                 <Grid
                                     x:Name="SelectionRailHost"
@@ -376,9 +376,9 @@
                                         <DoubleAnimation Storyboard.TargetName="SelectionCoreTransform" Storyboard.TargetProperty="ScaleX" To="1.01" Duration="0:0:1.24" AutoReverse="True" RepeatBehavior="Forever" />
                                         <DoubleAnimation Storyboard.TargetName="SelectionCoreTransform" Storyboard.TargetProperty="ScaleY" To="1.01" Duration="0:0:1.24" AutoReverse="True" RepeatBehavior="Forever" />
                                         <DoubleAnimation Storyboard.TargetName="SelectionPulse4" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:1.24" AutoReverse="True" RepeatBehavior="Forever" />
-                                        <DoubleAnimation Storyboard.TargetName="SelectionSheen" Storyboard.TargetProperty="Opacity" To="0.22" Duration="0:0:1.22" AutoReverse="True" RepeatBehavior="Forever" />
-                                        <DoubleAnimation Storyboard.TargetName="SelectionSheenTransform" Storyboard.TargetProperty="TranslateX" To="8" Duration="0:0:1.22" AutoReverse="True" RepeatBehavior="Forever" />
-                                        <DoubleAnimation Storyboard.TargetName="SelectionCue" Storyboard.TargetProperty="Opacity" To="0.78" Duration="0:0:1.1" AutoReverse="True" RepeatBehavior="Forever" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionSheen" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionSheenTransform" Storyboard.TargetProperty="TranslateX" To="0" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionCue" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.12" />
                                         <DoubleAnimation Storyboard.TargetName="SelectionRail" Storyboard.TargetProperty="Opacity" To="0.84" Duration="0:0:1.18" AutoReverse="True" RepeatBehavior="Forever" />
                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Foreground">
                                             <DiscreteObjectKeyFrame KeyTime="0" Value="White" />
@@ -511,7 +511,7 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Grid x:Name="AppTitleBar" Grid.Row="0" Background="Transparent" Padding="6,3">
+            <Grid x:Name="AppTitleBar" Grid.Row="0" Background="{ThemeResource AppBackdropBaseBrush}" Padding="6,3">
                 <Border
                     HorizontalAlignment="Stretch"
                     Background="{ThemeResource ToolbarBackgroundBrush}"

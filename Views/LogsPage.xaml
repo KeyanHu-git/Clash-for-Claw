@@ -35,37 +35,28 @@
                         </StackPanel>
 
                         <Border Style="{StaticResource InsetPanel}">
-                            <Grid ColumnSpacing="12" RowSpacing="8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="280" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-
+                            <StackPanel Spacing="8">
                                 <TextBlock Style="{StaticResource MutedText}" Text="桌面日志目录" />
-                                <StackPanel Grid.Row="1" Spacing="8">
-                                    <TextBlock FontWeight="SemiBold" Text="{Binding LogDirectoryPath}" TextWrapping="WrapWholeWords" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Click="OnPickLogDirectoryClicked" Content="选择目录" />
-                                        <Button Click="OnOpenLogDirectoryClicked" Content="打开目录" />
-                                        <Button
-                                            Click="OnResetLogDirectoryClicked"
-                                            Content="恢复默认"
-                                            IsEnabled="{Binding IsCustomLogDirectory}" />
-                                    </StackPanel>
+                                <TextBlock FontWeight="SemiBold" Text="{Binding LogDirectoryPath}" TextWrapping="WrapWholeWords" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Click="OnPickLogDirectoryClicked" Content="选择目录" />
+                                    <Button Click="OnOpenLogDirectoryClicked" Content="打开目录" />
+                                    <Button
+                                        Click="OnResetLogDirectoryClicked"
+                                        Content="恢复默认"
+                                        IsEnabled="{Binding IsCustomLogDirectory}" />
                                 </StackPanel>
 
-                                <TextBlock Grid.Column="1" Style="{StaticResource MutedText}" Text="当前生效日志" />
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Grid.Row="1"
-                                    FontWeight="SemiBold"
-                                    Text="{Binding ActiveLogFilePath}"
-                                    TextWrapping="WrapWholeWords" />
-                            </Grid>
+                                <Border Style="{StaticResource InsetPanel}">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Style="{StaticResource PanelLabelText}" Text="当前主要日志文件" />
+                                        <TextBlock
+                                            FontWeight="SemiBold"
+                                            Text="{Binding ActiveLogFilePath}"
+                                            TextWrapping="WrapWholeWords" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource InsetPanel}">
@@ -103,10 +94,19 @@
 
                             <Border Style="{StaticResource InsetPanel}">
                                 <StackPanel Spacing="4">
-                                    <TextBlock Style="{StaticResource PanelLabelText}" Text="桌面侧日志文件" />
-                                    <TextBlock Text="{Binding DesktopLogFilePath}" TextWrapping="WrapWholeWords" />
-                                    <TextBlock Text="{Binding SettingsLogPath}" TextWrapping="WrapWholeWords" />
-                                    <TextBlock Text="{Binding CrashLogPath}" TextWrapping="WrapWholeWords" />
+                                    <TextBlock Style="{StaticResource PanelLabelText}" Text="桌面日志文件" />
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Style="{StaticResource PanelLabelText}" Text="后台" />
+                                        <TextBlock Text="{Binding DesktopLogFilePath}" TextWrapping="WrapWholeWords" />
+                                    </StackPanel>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Style="{StaticResource PanelLabelText}" Text="设置" />
+                                        <TextBlock Text="{Binding SettingsLogPath}" TextWrapping="WrapWholeWords" />
+                                    </StackPanel>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Style="{StaticResource PanelLabelText}" Text="崩溃" />
+                                        <TextBlock Text="{Binding CrashLogPath}" TextWrapping="WrapWholeWords" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

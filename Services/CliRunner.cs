@@ -337,11 +337,10 @@ public sealed class CliRunner
             var candidatePath = ownedProcess.MainModule?.FileName;
             if (!string.IsNullOrWhiteSpace(candidatePath))
             {
-                return SamePath(candidatePath, cliPath)
-                    || (allowSiblingProductProcess && SameFileName(candidatePath, cliPath));
+                return SamePath(candidatePath, cliPath);
             }
 
-            return string.Equals(ownedProcess.ProcessName, Path.GetFileNameWithoutExtension(cliPath), StringComparison.OrdinalIgnoreCase);
+            return false;
         }
         catch
         {
@@ -351,10 +350,6 @@ public sealed class CliRunner
 
     private static bool SamePath(string left, string right)
         => string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.OrdinalIgnoreCase);
-
-    private static bool SameFileName(string left, string right)
-        => string.Equals(Path.GetFileName(left), Path.GetFileName(right), StringComparison.OrdinalIgnoreCase);
-
     private static TimeSpan Remaining(DateTimeOffset deadline)
     {
         var remaining = deadline - DateTimeOffset.UtcNow;

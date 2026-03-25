@@ -193,27 +193,6 @@
                                     VerticalAlignment="Top" />
                             </Grid>
 
-                            <Grid ColumnSpacing="8" RowSpacing="8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <Border Style="{StaticResource MetricTile}">
-                                    <StackPanel Spacing="3">
-                                        <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="运行账户" />
-                                        <TextBlock FontWeight="SemiBold" Text="{Binding ServiceModeAccountText}" />
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="1" Style="{StaticResource MetricTile}">
-                                    <StackPanel Spacing="3">
-                                        <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="后台数据目录" />
-                                        <TextBlock FontWeight="SemiBold" Text="{Binding ServiceModeDataPath}" TextWrapping="WrapWholeWords" />
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
                             <Border Style="{StaticResource InsetPanel}">
                                 <StackPanel Spacing="4">
                                     <TextBlock Style="{StaticResource SettingsMicroLabel}" Text="切换说明" />
@@ -304,26 +283,34 @@
                     <Border x:Name="CliCard" Grid.Row="2" Grid.ColumnSpan="2" Style="{StaticResource SettingsFormCard}">
                         <StackPanel Spacing="8">
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource SectionTitle}" Text="内置后台组件" />
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="高级维护" />
                                 <TextBlock
                                     Style="{StaticResource MutedText}"
-                                    Text="默认使用安装包内置组件；只有维护自定义组件时才需要修改。"
+                                    Text="默认无需修改；只有维护自定义后台时才需要展开。"
                                     TextWrapping="WrapWholeWords" />
                             </StackPanel>
 
-                            <ToggleSwitch
-                                Header="自动启动内置后台"
-                                IsOn="{Binding AutoRunCliEnabled, Mode=TwoWay}" />
-                            <TextBox
-                                Header="后台组件路径"
-                                Style="{StaticResource InputTextBox}"
-                                Text="{Binding CliPath, Mode=TwoWay}"
-                                PlaceholderText="默认使用内置组件" />
-                            <TextBox
-                                Header="启动参数"
-                                Style="{StaticResource InputTextBox}"
-                                Text="{Binding CliArgs, Mode=TwoWay}"
-                                PlaceholderText="--daemon" />
+                            <Expander Header="内置后台组件">
+                                <StackPanel Spacing="8" Margin="0,8,0,0">
+                                    <TextBlock
+                                        Style="{StaticResource MutedText}"
+                                        Text="默认使用安装包内置组件；只有维护自定义组件时才需要修改。"
+                                        TextWrapping="WrapWholeWords" />
+                                    <ToggleSwitch
+                                        Header="自动启动内置后台"
+                                        IsOn="{Binding AutoRunCliEnabled, Mode=TwoWay}" />
+                                    <TextBox
+                                        Header="后台组件路径"
+                                        Style="{StaticResource InputTextBox}"
+                                        Text="{Binding CliPath, Mode=TwoWay}"
+                                        PlaceholderText="默认使用内置组件" />
+                                    <TextBox
+                                        Header="启动参数"
+                                        Style="{StaticResource InputTextBox}"
+                                        Text="{Binding CliArgs, Mode=TwoWay}"
+                                        PlaceholderText="--daemon" />
+                                </StackPanel>
+                            </Expander>
                         </StackPanel>
                     </Border>
 

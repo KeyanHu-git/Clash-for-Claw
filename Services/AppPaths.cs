@@ -153,8 +153,6 @@ public static class AppPaths
                 Path.Combine(current.FullName, "backend", "ClashForClaw.Service", "bin", BackendExecutableName),
                 Path.Combine(current.FullName, "backend", "ClashForClaw.Service", "artifacts", "tmp", BackendExecutableName),
                 Path.Combine(current.FullName, "artifacts", "release", BackendExecutableName),
-                Path.Combine(current.FullName, "artifacts", "fi-ohm-runtime", BackendExecutableName),
-                Path.Combine(current.FullName, "artifacts", "reliability-runtime", BackendExecutableName),
             };
 
             foreach (var candidate in repoCandidates)
