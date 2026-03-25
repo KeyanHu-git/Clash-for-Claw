@@ -15,6 +15,10 @@
 
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
+                    <LinearGradientBrush x:Key="AppBackdropBaseBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FFF5F7FB" Offset="0" />
+                        <GradientStop Color="#FFEFF2F9" Offset="1" />
+                    </LinearGradientBrush>
                     <LinearGradientBrush x:Key="AppBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
                         <GradientStop Color="#BFF5F7FB" Offset="0" />
                         <GradientStop Color="#BFEFF2F9" Offset="1" />
@@ -103,6 +107,10 @@
                     <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#8A0EA5A5" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
+                    <LinearGradientBrush x:Key="AppBackdropBaseBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FF0B0F14" Offset="0" />
+                        <GradientStop Color="#FF101420" Offset="1" />
+                    </LinearGradientBrush>
                     <LinearGradientBrush x:Key="AppBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
                         <GradientStop Color="#990B0F14" Offset="0" />
                         <GradientStop Color="#99101420" Offset="1" />

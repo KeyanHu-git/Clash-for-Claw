@@ -158,17 +158,19 @@ cd Clash-for-Claw
 dotnet build ClashForClaw.csproj -p:Platform=x64
 ```
 
-生成默认发布包：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-release-matrix.ps1 -Version 0.1.1
-```
-
-单独生成安装版：
+生成安装版发布包（默认发布入口）：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Version 0.1.1
 ```
+
+如需同时生成便携版 zip：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Version 0.1.1 -IncludePortable
+```
+
+`.\scripts\build-release-matrix.ps1` 仍保留为兼容包装脚本，内部会转调 `build-installer.ps1`。
 
 ## 协议
 

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"clash-for-claw-service/internal/config"
+	"clash-for-claw-service/internal/winproc"
 )
 
 func TestEnsureServicePortFreeStopsMatchingOwner(t *testing.T) {
@@ -25,7 +26,7 @@ func TestEnsureServicePortFreeStopsMatchingOwner(t *testing.T) {
 	}
 
 	waitForProcessExit(t, cmd.Process.Pid, 3*time.Second)
-	owners, err := listeningPortOwners([]int{port})
+	owners, err := winproc.ListeningPortOwners([]int{port})
 	if err != nil {
 		t.Fatalf("listeningPortOwners failed: %v", err)
 	}
@@ -60,7 +61,7 @@ func TestEnsureServicePortFreeKeepsForeignOwner(t *testing.T) {
 	if !strings.Contains(err.Error(), fmt.Sprintf("service_port_%d_in_use_by_", port)) {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !isProcessRunning(cmd.Process.Pid) {
+	if !winproc.IsProcessRunning(cmd.Process.Pid) {
 		t.Fatalf("foreign owner process %d was terminated unexpectedly", cmd.Process.Pid)
 	}
 }
@@ -122,7 +123,7 @@ func startPortOwnerHelper(t *testing.T, helperExe string, port int) *exec.Cmd {
 	}
 
 	t.Cleanup(func() {
-		if cmd.Process != nil && isProcessRunning(cmd.Process.Pid) {
+		if cmd.Process != nil && winproc.IsProcessRunning(cmd.Process.Pid) {
 			_ = cmd.Process.Kill()
 		}
 		_ = cmd.Wait()
@@ -130,7 +131,7 @@ func startPortOwnerHelper(t *testing.T, helperExe string, port int) *exec.Cmd {
 
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		owners, err := listeningPortOwners([]int{port})
+		owners, err := winproc.ListeningPortOwners([]int{port})
 		if err == nil {
 			if pid, ok := owners[port]; ok && pid > 0 {
 				return cmd
@@ -161,7 +162,7 @@ func waitForProcessExit(t *testing.T, pid int, timeout time.Duration) {
 
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if !isProcessRunning(pid) {
+		if !winproc.IsProcessRunning(pid) {
 			return
 		}
 		time.Sleep(100 * time.Millisecond)

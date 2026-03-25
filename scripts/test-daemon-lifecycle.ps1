@@ -20,6 +20,24 @@ function Get-StateSnapshot {
     }
 }
 
+function Get-RunningServicePid {
+    $output = sc.exe queryex ClashForClaw 2>$null
+    if (-not $output) {
+        return $null
+    }
+
+    $joined = $output -join "`n"
+    if ($joined -notmatch 'STATE\s+: 4\s+RUNNING') {
+        return $null
+    }
+
+    if ($joined -match 'PID\s+: (\d+)') {
+        return [int]$Matches[1]
+    }
+
+    return $null
+}
+
 function Assert-State {
     param(
         [string]$Label,
@@ -57,6 +75,17 @@ if (Test-Path $settingsPath) {
 }
 
 try {
+    $servicePid = Get-RunningServicePid
+    if ($servicePid) {
+        [pscustomobject]@{
+            Skipped = $true
+            Reason = "windows_service_mode_active"
+            ServicePid = $servicePid
+            Message = "Desktop daemon lifecycle smoke test is skipped because the Windows service already owns the shared control port 13000."
+        } | ConvertTo-Json -Depth 4
+        exit 0
+    }
+
     $settings = if (Test-Path $settingsPath) {
         Get-Content $settingsPath -Raw | ConvertFrom-Json
     }
@@ -67,7 +96,7 @@ try {
     $settings | Add-Member -NotePropertyName CloseToTrayEnabled -NotePropertyValue $false -Force
     $settings | ConvertTo-Json -Depth 8 | Set-Content $settingsPath -Encoding UTF8
 
-    Get-Process ClashForClaw,ClashForClaw.Service -ErrorAction SilentlyContinue | Stop-Process -Force
+    Get-Process ClashForClaw,ClashForClaw.Service -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
 
     Start-Process -FilePath $AppExePath | Out-Null
@@ -106,5 +135,5 @@ finally {
         Remove-Item $backupPath -Force
     }
 
-    Get-Process ClashForClaw,ClashForClaw.Service -ErrorAction SilentlyContinue | Stop-Process -Force
+    Get-Process ClashForClaw,ClashForClaw.Service -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 }

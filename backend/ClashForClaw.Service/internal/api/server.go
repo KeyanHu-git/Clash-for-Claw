@@ -28,19 +28,20 @@ import (
 var ErrServerClosed = http.ErrServerClosed
 
 type Server struct {
-	paths       runtime.Paths
-	cfgPath     string
-	cfg         *config.Config
+	paths             runtime.Paths
+	cfgPath           string
+	cfg               *config.Config
 	allowSelfShutdown bool
-	router      *mux.Router
-	httpServer  *http.Server
-	proxyMgr    *proxy.Manager
-	subMgr      *subscription.Manager
-	sysProxy    *systemproxy.Manager
-	nonce       string
-	done        chan error
-	shutdownMu  sync.Once
-	shutdownErr error
+	router            *mux.Router
+	httpServer        *http.Server
+	proxyMgr          *proxy.Manager
+	prober            *gateway.Prober
+	subMgr            *subscription.Manager
+	sysProxy          *systemproxy.Manager
+	nonce             string
+	done              chan error
+	shutdownMu        sync.Once
+	shutdownErr       error
 }
 
 func NewServer(paths runtime.Paths, allowSelfShutdown bool) (*Server, error) {
@@ -54,6 +55,7 @@ func NewServer(paths runtime.Paths, allowSelfShutdown bool) (*Server, error) {
 		cfg:               cfg,
 		allowSelfShutdown: allowSelfShutdown,
 		proxyMgr:          proxy.NewManager(paths),
+		prober:            gateway.NewProber(),
 		sysProxy:          systemproxy.NewManager(paths),
 		nonce:             randomNonce(),
 		done:              make(chan error, 1),
@@ -146,7 +148,7 @@ func (s *Server) handleGetNonce(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	proxyStatus := s.proxyMgr.Status()
-	probe := gateway.Probe(context.Background(), s.cfg.Gateway.URL, proxyStatus.ProxyURL)
+	probe := s.prober.Snapshot(r.Context(), s.cfg.Gateway.URL, proxyStatus.ProxyURL)
 	enabled, server := s.sysProxy.Status()
 	ok := probe.GatewayOK && probe.InternetOK
 	if proxyStatus.Mode == config.ProxyModeSubscription && (proxyStatus.Fallback || !proxyStatus.MihomoActive) {

@@ -18,14 +18,6 @@ $ErrorActionPreference = "Stop"
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-function Remove-Directory {
-    param([string]$Path)
-
-    if (Test-Path $Path) {
-        Remove-Item $Path -Recurse -Force
-    }
-}
-
 function Remove-PathIfExists {
     param([string]$Path)
 
@@ -287,7 +279,7 @@ $defaultBackendSourceDir = Join-Path $repoRoot "backend\ClashForClaw.Service"
 $selfContained = $PublishModel -eq "self-contained"
 
 New-Item -ItemType Directory -Path $artifactsRoot -Force | Out-Null
-Remove-Directory $publishDir
+Remove-PathIfExists $publishDir
 New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
 
 dotnet publish (Join-Path $repoRoot "ClashForClaw.csproj") `

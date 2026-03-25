@@ -132,6 +132,45 @@ func TestStatusDetectsRuntimeExitAndTriggersRecovery(t *testing.T) {
 	}
 }
 
+func TestStatusDebouncesTransientPortErrorsBeforeRecovery(t *testing.T) {
+	paths := newProxyTestPaths(t)
+	fake := &fakeMihomoRuntime{
+		plan: []fakeApplyStep{
+			{active: true},
+			{active: true},
+		},
+	}
+
+	manager := NewManager(paths)
+	manager.newMihomo = func(runtime.Paths) mihomoRuntime { return fake }
+	defer manager.Stop()
+
+	status := manager.Apply(newSubscriptionConfig())
+	if !status.MihomoActive {
+		t.Fatalf("initial mihomo active = %v, want true", status.MihomoActive)
+	}
+
+	fake.SetRuntime(false, "mihomo_port_7890_missing")
+	current := manager.Status()
+	if current.MihomoActive {
+		t.Fatalf("transient runtime fault should surface as inactive before recovery")
+	}
+
+	time.Sleep(2500 * time.Millisecond)
+	if fake.ApplyCalls() != 1 {
+		t.Fatalf("apply calls during debounce = %d, want 1", fake.ApplyCalls())
+	}
+
+	fake.SetRuntime(true, "")
+	waitForProxyCondition(t, 2*time.Second, func() bool {
+		return manager.Status().MihomoActive
+	})
+
+	if fake.ApplyCalls() != 1 {
+		t.Fatalf("transient runtime fault should not trigger restart, apply calls = %d", fake.ApplyCalls())
+	}
+}
+
 func newProxyTestPaths(t *testing.T) runtime.Paths {
 	t.Helper()
 

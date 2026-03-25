@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using ClashForClaw;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -20,16 +21,16 @@ public enum StatusLevel
 
 public sealed class MainViewModel : INotifyPropertyChanged
 {
-    private string gatewayUrl = "http://127.0.0.1:18789";
+    private string gatewayUrl = AppDefaults.DefaultGatewayUrl;
     private string gatewayToken = string.Empty;
     private bool gatewayTokenConfigured;
     private string subscriptionUrl = string.Empty;
-    private string localPort = "7890";
+    private string localPort = AppDefaults.DefaultLocalProxyPort;
     private bool isSubscriptionMode = true;
     private string modeHint = "订阅优先，失败回退本地端口。";
     private int subscriptionRefreshHours = 6;
     private int subscriptionProbeMinutes = 60;
-    private int subscriptionColumns = 2;
+    private int subscriptionColumns = AppDefaults.DefaultSubscriptionColumns;
 
     private string connectionState = "未连接";
     private string connectionDetail = "等待配置";
@@ -64,10 +65,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool serviceTaskFallbackActive;
     private bool autoRunCliEnabled = true;
     private string cliPath = string.Empty;
-    private string cliArgs = "--daemon";
+    private string cliArgs = AppDefaults.DefaultCliArguments;
     private string logDirectory = AppPaths.DefaultDesktopLogDirectory;
     private bool debugLoggingEnabled;
-    private string themeMode = "Dark";
+    private string themeMode = AppDefaults.DefaultThemeMode;
     private string serviceModeMessage = string.Empty;
     private bool isServiceModeMessageOpen;
     private InfoBarSeverity serviceModeSeverity = InfoBarSeverity.Informational;
@@ -97,9 +98,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         LogDirectoryPath = AppPaths.ResolveDesktopLogDirectory(settings.LogDirectory);
         DebugLoggingEnabled = settings.DebugLoggingEnabled;
         ThemeMode = string.IsNullOrWhiteSpace(settings.ThemeMode)
-            ? "Dark"
+            ? AppDefaults.DefaultThemeMode
             : settings.ThemeMode;
-        SubscriptionColumns = settings.SubscriptionColumns <= 0 ? 2 : settings.SubscriptionColumns;
+        SubscriptionColumns = settings.SubscriptionColumns <= 0 ? AppDefaults.DefaultSubscriptionColumns : settings.SubscriptionColumns;
     }
 
     public string GatewayUrl
@@ -655,6 +656,26 @@ public sealed class MainViewModel : INotifyPropertyChanged
         subscriptionTrafficUnit = "GB";
         subscriptionTrafficUpdatedAt = null;
         RaiseTrafficChanged();
+    }
+
+    public void UpdateConnectionStatus(string state, StatusLevel level, string detail)
+    {
+        ConnectionState = state;
+        ConnectionStatusLevel = level;
+        ConnectionDetail = detail;
+    }
+
+    public void UpdateConnectivity(
+        StatusLevel localLevel,
+        string localText,
+        StatusLevel gatewayLevel,
+        string gatewayText,
+        StatusLevel internetLevel,
+        string internetText)
+    {
+        SetLocalStatus(localLevel, localText);
+        SetGatewayStatus(gatewayLevel, gatewayText);
+        SetInternetStatus(internetLevel, internetText);
     }
 
     private void SetLocalStatus(StatusLevel level, string text)

@@ -1,4 +1,4 @@
-﻿package proxy
+package proxy
 
 import (
 	"context"
@@ -30,7 +30,10 @@ type mihomoRuntime interface {
 
 type mihomoFactory func(runtime.Paths) mihomoRuntime
 
-const recoveryInterval = 2 * time.Second
+const (
+	recoveryInterval                = 2 * time.Second
+	transientRecoveryDebounceWindow = 3 * time.Second
+)
 
 type Manager struct {
 	mu               sync.Mutex
@@ -45,6 +48,7 @@ type Manager struct {
 	recoverCh        chan struct{}
 	loopCancel       context.CancelFunc
 	lastRecoverAt    time.Time
+	unhealthySince   time.Time
 }
 
 func NewManager(paths runtime.Paths) *Manager {
@@ -132,6 +136,7 @@ func (m *Manager) Stop() error {
 	m.activeCfg = nil
 	m.proxyURL = ""
 	m.status = Status{}
+	m.unhealthySince = time.Time{}
 	return err
 }
 
@@ -156,8 +161,12 @@ func (m *Manager) statusLocked() Status {
 	runtime := m.mihomo.RuntimeState()
 	status.MihomoActive = runtime.Active
 	if runtime.Active {
+		m.unhealthySince = time.Time{}
 		status.MihomoError = ""
 	} else if runtime.Error != "" {
+		if isTransientRuntimeError(runtime.Error) && m.unhealthySince.IsZero() {
+			m.unhealthySince = time.Now()
+		}
 		if shouldReplaceRuntimeError(status.MihomoError) {
 			status.MihomoError = runtime.Error
 		}
@@ -227,6 +236,7 @@ func (m *Manager) shouldRecoverLocked() bool {
 	}
 	runtime := m.mihomo.RuntimeState()
 	if runtime.Active {
+		m.unhealthySince = time.Time{}
 		if !m.status.MihomoActive {
 			m.status.MihomoActive = true
 			m.status.MihomoError = ""
@@ -236,6 +246,17 @@ func (m *Manager) shouldRecoverLocked() bool {
 	if runtime.Error != "" {
 		m.status.MihomoActive = false
 		m.status.MihomoError = runtime.Error
+	}
+	if isTransientRuntimeError(runtime.Error) {
+		if m.unhealthySince.IsZero() {
+			m.unhealthySince = time.Now()
+			return false
+		}
+		if time.Since(m.unhealthySince) < transientRecoveryDebounceWindow {
+			return false
+		}
+	} else {
+		m.unhealthySince = time.Time{}
 	}
 	return true
 }
@@ -270,3 +291,7 @@ func shouldReplaceRuntimeError(current string) bool {
 	}
 }
 
+func isTransientRuntimeError(value string) bool {
+	trimmed := strings.TrimSpace(value)
+	return trimmed == "mihomo_port_check_failed" || strings.HasPrefix(trimmed, "mihomo_port_")
+}

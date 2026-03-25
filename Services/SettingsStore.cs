@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text.Json;
+using ClashForClaw;
 using ClashForClaw.Models;
 
 namespace ClashForClaw.Services;
@@ -72,7 +73,7 @@ public static class SettingsStore
         if (string.IsNullOrWhiteSpace(Current.CliArgs)
             || string.Equals(Current.CliArgs, "--mode adapter", StringComparison.OrdinalIgnoreCase))
         {
-            Current.CliArgs = "--daemon";
+            Current.CliArgs = AppDefaults.DefaultCliArguments;
         }
 
         Current.LogDirectory = AppPaths.NormalizeLogDirectorySetting(Current.LogDirectory);
@@ -88,12 +89,12 @@ public static class SettingsStore
         }
 
         Current.ThemeMode = string.IsNullOrWhiteSpace(Current.ThemeMode)
-            ? "Dark"
+            ? AppDefaults.DefaultThemeMode
             : Current.ThemeMode;
 
         if (Current.SubscriptionColumns <= 0)
         {
-            Current.SubscriptionColumns = 2;
+            Current.SubscriptionColumns = AppDefaults.DefaultSubscriptionColumns;
         }
         if (Current.SubscriptionColumns > 3)
         {

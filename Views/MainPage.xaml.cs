@@ -156,9 +156,7 @@ public partial class MainPage : Page
             await Api.ActivateSubscriptionAsync(target.Id);
             ViewModel.SubscriptionUrl = string.IsNullOrWhiteSpace(target.Url) ? string.Empty : target.Url;
             ApplySubscriptionSnapshot(target);
-            ViewModel.ConnectionState = "同步中";
-            ViewModel.ConnectionStatusLevel = StatusLevel.Warning;
-            ViewModel.ConnectionDetail = "订阅已切换，正在检查链路...";
+            ViewModel.UpdateConnectionStatus("同步中", StatusLevel.Warning, "订阅已切换，正在检查链路...");
             ViewModel.ModeHint = "订阅优先，失败回退本地端口。";
             QueueDashboardRefresh(applyProbe: true);
         }
@@ -218,9 +216,7 @@ public partial class MainPage : Page
             ViewModel.ReloadConfig();
             ViewModel.TrafficUsedGb = 0;
             ViewModel.TrafficTotalGb = 0;
-            ViewModel.ConnectionState = "已连接";
-            ViewModel.ConnectionStatusLevel = StatusLevel.Ok;
-            ViewModel.ConnectionDetail = $"本地端口 {port} 已切换。";
+            ViewModel.UpdateConnectionStatus("已连接", StatusLevel.Ok, $"本地端口 {port} 已切换。");
             ViewModel.ModeHint = $"当前使用本地端口 {port}。";
             QueueDashboardRefresh();
         }
@@ -439,12 +435,13 @@ public partial class MainPage : Page
     {
         if (string.Equals(proxy?.MihomoError, "mihomo_binary_not_found", StringComparison.OrdinalIgnoreCase))
         {
-            ViewModel.LocalStatusLevel = StatusLevel.Warning;
-            ViewModel.LocalStatusText = "缺少 mihomo";
-            ViewModel.GatewayStatusLevel = StatusLevel.Unknown;
-            ViewModel.GatewayStatusText = "未检测";
-            ViewModel.InternetStatusLevel = StatusLevel.Unknown;
-            ViewModel.InternetStatusText = "未检测";
+            ViewModel.UpdateConnectivity(
+                StatusLevel.Warning,
+                "缺少 mihomo",
+                StatusLevel.Unknown,
+                "未检测",
+                StatusLevel.Unknown,
+                "未检测");
             return;
         }
 
@@ -453,12 +450,13 @@ public partial class MainPage : Page
             return;
         }
 
-        ViewModel.LocalStatusLevel = StatusLevel.Ok;
-        ViewModel.LocalStatusText = "可用";
-        ViewModel.GatewayStatusLevel = probe.GatewayOk ? StatusLevel.Ok : StatusLevel.Error;
-        ViewModel.GatewayStatusText = probe.GatewayOk ? "可达" : "不可达";
-        ViewModel.InternetStatusLevel = probe.InternetOk ? StatusLevel.Ok : StatusLevel.Warning;
-        ViewModel.InternetStatusText = probe.InternetOk ? "可用" : "异常";
+        ViewModel.UpdateConnectivity(
+            StatusLevel.Ok,
+            "可用",
+            probe.GatewayOk ? StatusLevel.Ok : StatusLevel.Error,
+            probe.GatewayOk ? "可达" : "不可达",
+            probe.InternetOk ? StatusLevel.Ok : StatusLevel.Warning,
+            probe.InternetOk ? "可用" : "异常");
     }
 
     private void OnGatewayUrlLostFocus(object sender, RoutedEventArgs e)
@@ -593,15 +591,14 @@ public partial class MainPage : Page
             return true;
         }
 
-        ViewModel.ConnectionState = "未连接";
-        ViewModel.ConnectionStatusLevel = StatusLevel.Warning;
-        ViewModel.ConnectionDetail = detail;
-        ViewModel.LocalStatusLevel = StatusLevel.Warning;
-        ViewModel.LocalStatusText = "未启动";
-        ViewModel.GatewayStatusLevel = StatusLevel.Unknown;
-        ViewModel.GatewayStatusText = "未检测";
-        ViewModel.InternetStatusLevel = StatusLevel.Unknown;
-        ViewModel.InternetStatusText = "未检测";
+        ViewModel.UpdateConnectionStatus("未连接", StatusLevel.Warning, detail);
+        ViewModel.UpdateConnectivity(
+            StatusLevel.Warning,
+            "未启动",
+            StatusLevel.Unknown,
+            "未检测",
+            StatusLevel.Unknown,
+            "未检测");
         return false;
     }
 }

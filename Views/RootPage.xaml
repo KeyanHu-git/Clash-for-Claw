@@ -454,6 +454,7 @@
         <Grid.RenderTransform>
             <ScaleTransform x:Name="RootScale" ScaleX="1" ScaleY="1" />
         </Grid.RenderTransform>
+        <Border Background="{ThemeResource AppBackdropBaseBrush}" />
         <Canvas x:Name="FluidCanvas" IsHitTestVisible="False" Opacity="0.68">
             <Ellipse x:Name="GlowA" Canvas.Left="-180" Canvas.Top="-160" Fill="{ThemeResource GlowPrimaryBrush}" Height="420" Width="420" RenderTransformOrigin="0.5,0.5">
                 <Ellipse.RenderTransform>

@@ -2,6 +2,7 @@ param(
     [Parameter(Mandatory = $true)][string]$ServiceExePath,
     [Parameter(Mandatory = $true)][string]$SourceConfigPath,
     [string]$BaseDir = "D:\OpenClawAdapter\artifacts\subscription-test-runtime",
+    [string]$MihomoPath = "",
     [int]$HttpPort = 13001,
     [int]$MixedPort = 7895,
     [int]$HttpProxyPort = 7896,
@@ -14,6 +15,39 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+function Resolve-MihomoSeedPath {
+    param(
+        [string]$ExplicitPath,
+        [string]$ServiceExecutablePath
+    )
+
+    $candidates = @()
+    if (-not [string]::IsNullOrWhiteSpace($ExplicitPath)) {
+        $candidates += $ExplicitPath
+    }
+
+    $candidates += @(
+        (Join-Path $env:ProgramData "ClashForClaw\bin\mihomo.exe"),
+        (Join-Path (Split-Path -Parent $ServiceExecutablePath) "bin\mihomo.exe"),
+        (Join-Path (Split-Path -Parent $ServiceExecutablePath) "mihomo.exe")
+    )
+
+    foreach ($candidate in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($candidate)) {
+            continue
+        }
+
+        if (Test-Path $candidate -PathType Leaf) {
+            $item = Get-Item $candidate
+            if ($item.Length -gt 1MB) {
+                return (Resolve-Path $candidate).Path
+            }
+        }
+    }
+
+    return ""
+}
 
 function Wait-ForStatus {
     param(
@@ -33,6 +67,41 @@ function Wait-ForStatus {
     }
 
     throw "Timed out waiting for $BaseUrl/status"
+}
+
+function Wait-ForHealthySubscription {
+    param(
+        [string]$BaseUrl,
+        [int]$TimeoutSeconds = 45
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastStatus = $null
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $lastStatus = Invoke-WebRequest -UseBasicParsing "$BaseUrl/status" -TimeoutSec $RequestTimeoutSeconds |
+                Select-Object -ExpandProperty Content |
+                ConvertFrom-Json
+
+            if ($lastStatus.ok `
+                -and $lastStatus.probe.gateway_ok `
+                -and $lastStatus.probe.internet_ok `
+                -and $lastStatus.proxy.mihomo_active `
+                -and $lastStatus.proxy.effective_mode -eq "subscription_url") {
+                return $lastStatus
+            }
+        }
+        catch {
+        }
+
+        Start-Sleep -Seconds 2
+    }
+
+    if ($lastStatus) {
+        throw ("Timed out waiting for healthy subscription mode. Last status: " + ($lastStatus | ConvertTo-Json -Depth 6 -Compress))
+    }
+
+    throw "Timed out waiting for healthy subscription mode."
 }
 
 function Get-Json {
@@ -65,6 +134,59 @@ function Get-PortOwner {
     return $null
 }
 
+function Stop-PortOwners {
+    param([int[]]$Ports)
+
+    $ownerIds = @()
+    foreach ($port in $Ports) {
+        $ownerIds += @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty OwningProcess -Unique)
+    }
+
+    foreach ($ownerId in ($ownerIds | Where-Object { $_ -and $_ -gt 0 } | Sort-Object -Unique)) {
+        try {
+            Stop-Process -Id $ownerId -Force -ErrorAction Stop
+        }
+        catch {
+        }
+    }
+}
+
+function Initialize-BaseDir {
+    param(
+        [string]$RequestedPath,
+        [int[]]$Ports
+    )
+
+    if (-not (Test-Path $RequestedPath)) {
+        New-Item -ItemType Directory -Path $RequestedPath -Force | Out-Null
+        return $RequestedPath
+    }
+
+    Stop-PortOwners -Ports $Ports
+
+    for ($attempt = 0; $attempt -lt 6; $attempt++) {
+        try {
+            Remove-Item $RequestedPath -Recurse -Force -ErrorAction Stop
+            New-Item -ItemType Directory -Path $RequestedPath -Force | Out-Null
+            return $RequestedPath
+        }
+        catch {
+            if ($attempt -eq 0) {
+                Stop-PortOwners -Ports $Ports
+            }
+
+            if ($attempt -eq 5) {
+                $fallbackPath = "$RequestedPath-" + [Guid]::NewGuid().ToString("N")
+                New-Item -ItemType Directory -Path $fallbackPath -Force | Out-Null
+                return $fallbackPath
+            }
+
+            Start-Sleep -Milliseconds 400
+        }
+    }
+}
+
 if (-not (Test-Path $ServiceExePath -PathType Leaf)) {
     throw "Service executable not found: $ServiceExePath"
 }
@@ -73,12 +195,15 @@ if (-not (Test-Path $SourceConfigPath -PathType Leaf)) {
     throw "Source config not found: $SourceConfigPath"
 }
 
-if (Test-Path $BaseDir) {
-    Remove-Item $BaseDir -Recurse -Force
-}
-
-New-Item -ItemType Directory -Path $BaseDir -Force | Out-Null
+$BaseDir = Initialize-BaseDir -RequestedPath $BaseDir -Ports @($HttpPort, $MixedPort, $HttpProxyPort, $SocksPort, $ControllerPort)
 New-Item -ItemType Directory -Path (Join-Path $BaseDir "logs") -Force | Out-Null
+
+$seedMihomoPath = Resolve-MihomoSeedPath -ExplicitPath $MihomoPath -ServiceExecutablePath $ServiceExePath
+if (-not [string]::IsNullOrWhiteSpace($seedMihomoPath)) {
+    $binDir = Join-Path $BaseDir "bin"
+    New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+    Copy-Item $seedMihomoPath (Join-Path $binDir "mihomo.exe") -Force
+}
 
 $configPath = Join-Path $BaseDir "config.json"
 Copy-Item $SourceConfigPath $configPath -Force
@@ -97,19 +222,29 @@ $baseUrl = "http://127.0.0.1:$HttpPort"
 $result = [ordered]@{
     BaseDir = $BaseDir
     BaseUrl = $baseUrl
+    SeededMihomoPath = $seedMihomoPath
     InitialActiveSubscription = $cfg.proxy.active_subscription_id
     Samples = @()
     Recovery = $null
 }
+$resultPath = Join-Path $BaseDir "result.json"
 
 $process = $null
 try {
     $process = Start-Process -FilePath $ServiceExePath -ArgumentList "--daemon --base-dir `"$BaseDir`"" -PassThru -WindowStyle Hidden
     $null = Wait-ForStatus -BaseUrl $baseUrl -TimeoutSeconds $WarmupSeconds
+    $healthyStatus = Wait-ForHealthySubscription -BaseUrl $baseUrl -TimeoutSeconds ($WarmupSeconds + 25)
 
     Start-Sleep -Seconds 2
     $cfgAfterStart = Get-Json $configPath
     $result.StartedActiveSubscription = $cfgAfterStart.proxy.active_subscription_id
+    $result.InitialHealth = [pscustomobject]@{
+        Ok = $healthyStatus.ok
+        GatewayOk = $healthyStatus.probe.gateway_ok
+        InternetOk = $healthyStatus.probe.internet_ok
+        MihomoActive = $healthyStatus.proxy.mihomo_active
+        EffectiveMode = $healthyStatus.proxy.effective_mode
+    }
 
     for ($i = 0; $i -lt $SampleCount; $i++) {
         $sample = [ordered]@{
@@ -141,6 +276,7 @@ try {
             $sample.Error = $_.Exception.Message
         }
         $result.Samples += [pscustomobject]$sample
+        Save-Json -Path $resultPath -Value $result
         Start-Sleep -Seconds $SampleIntervalSeconds
     }
 
@@ -149,14 +285,18 @@ try {
         throw "Failed to locate isolated mihomo process on ports $MixedPort/$ControllerPort"
     }
 
-    Stop-Process -Id $mihomoPid -Force
+    Stop-Process -Id $mihomoPid -Force -ErrorAction SilentlyContinue
     $deadline = (Get-Date).AddSeconds(25)
     $recovered = $false
     $recoveryStatus = $null
     while ((Get-Date) -lt $deadline) {
         try {
             $recoveryStatus = Invoke-WebRequest -UseBasicParsing "$baseUrl/status" -TimeoutSec $RequestTimeoutSeconds | Select-Object -ExpandProperty Content | ConvertFrom-Json
-            if ($recoveryStatus.proxy.mihomo_active -and $recoveryStatus.proxy.effective_mode -eq "subscription_url") {
+            if ($recoveryStatus.ok `
+                -and $recoveryStatus.probe.gateway_ok `
+                -and $recoveryStatus.probe.internet_ok `
+                -and $recoveryStatus.proxy.mihomo_active `
+                -and $recoveryStatus.proxy.effective_mode -eq "subscription_url") {
                 $recovered = $true
                 break
             }
@@ -175,9 +315,11 @@ try {
         FinalMihomoActive = if ($recoveryStatus) { $recoveryStatus.proxy.mihomo_active } else { $false }
         FinalEffectiveMode = if ($recoveryStatus) { $recoveryStatus.proxy.effective_mode } else { "" }
     }
+    Save-Json -Path $resultPath -Value $result
 
     $sampleFailures = @($result.Samples | Where-Object { -not $_.Ok -or -not $_.GatewayOk -or -not $_.InternetOk -or $_.Error })
     $result.SampleFailureCount = $sampleFailures.Count
+    Save-Json -Path $resultPath -Value $result
 
     if ($sampleFailures.Count -gt 0) {
         throw "Observed $($sampleFailures.Count) unhealthy or timed-out subscription samples during soak."
@@ -187,9 +329,14 @@ try {
         throw "Isolated subscription runtime did not recover after mihomo kill."
     }
 
+    Save-Json -Path $resultPath -Value $result
     $result | ConvertTo-Json -Depth 8
 }
 finally {
+    if ($result.Samples.Count -gt 0 -or $result.Recovery) {
+        Save-Json -Path $resultPath -Value $result
+    }
+
     if ($process -and -not $process.HasExited) {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
     }

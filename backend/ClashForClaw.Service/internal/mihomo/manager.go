@@ -12,6 +12,7 @@ import (
 
 	"clash-for-claw-service/internal/config"
 	adapterRuntime "clash-for-claw-service/internal/runtime"
+	"clash-for-claw-service/internal/winproc"
 )
 
 const (
@@ -222,7 +223,7 @@ func (m *Manager) runtimeStateLocked() RuntimeState {
 	if m.pid <= 0 {
 		return RuntimeState{Active: false, Error: "mihomo_not_started"}
 	}
-	if !isProcessRunning(m.pid) {
+	if !winproc.IsProcessRunning(m.pid) {
 		return RuntimeState{Active: false, PID: m.pid, Error: "mihomo_process_exited"}
 	}
 	ports := m.expectedPortsLocked()

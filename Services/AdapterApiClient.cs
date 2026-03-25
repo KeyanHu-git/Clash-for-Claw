@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using System.Threading.Tasks;
+using ClashForClaw;
 
 namespace ClashForClaw.Services;
 
@@ -19,7 +20,7 @@ public sealed class AdapterApiClient
     public AdapterApiClient(string? baseUrl = null)
     {
         BaseUrl = string.IsNullOrWhiteSpace(baseUrl)
-            ? "http://127.0.0.1:13000"
+            ? AppDefaults.DefaultAdapterApiUrl
             : baseUrl.TrimEnd('/');
         httpClient.Timeout = TimeSpan.FromSeconds(8);
     }

@@ -274,7 +274,7 @@ public partial class RootPage : Page
     {
         var highContrast = IsHighContrastEnabled();
         var allowMotion = uiSettings.AnimationsEnabled && !highContrast && !isWindowInteractionActive;
-        var showLayer = !highContrast && !isWindowInteractionActive;
+        var showLayer = !highContrast;
         FluidCanvas.Visibility = showLayer ? Visibility.Visible : Visibility.Collapsed;
         JellyfishLayer.Visibility = showLayer ? Visibility.Visible : Visibility.Collapsed;
 

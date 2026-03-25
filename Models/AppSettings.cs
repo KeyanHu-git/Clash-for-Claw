@@ -1,4 +1,6 @@
-﻿namespace ClashForClaw.Models;
+using ClashForClaw;
+
+namespace ClashForClaw.Models;
 
 public sealed class AppSettings
 {
@@ -7,10 +9,9 @@ public sealed class AppSettings
     public bool CloseToTrayEnabled { get; set; } = true;
     public bool AutoRunCliEnabled { get; set; } = true;
     public string CliPath { get; set; } = "ClashForClaw.Service.exe";
-    public string CliArgs { get; set; } = "--daemon";
+    public string CliArgs { get; set; } = AppDefaults.DefaultCliArguments;
     public string LogDirectory { get; set; } = string.Empty;
     public bool DebugLoggingEnabled { get; set; }
-    public string ThemeMode { get; set; } = "Dark";
-    public int SubscriptionColumns { get; set; } = 2;
+    public string ThemeMode { get; set; } = AppDefaults.DefaultThemeMode;
+    public int SubscriptionColumns { get; set; } = AppDefaults.DefaultSubscriptionColumns;
 }
-

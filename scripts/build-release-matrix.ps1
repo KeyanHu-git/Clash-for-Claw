@@ -10,6 +10,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Compatibility wrapper for older release commands.
+# The canonical release entrypoint is scripts/build-installer.ps1.
 $scriptPath = Join-Path $PSScriptRoot "build-installer.ps1"
 
 function Invoke-BuildInstaller {

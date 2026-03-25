@@ -13,7 +13,6 @@ namespace ClashForClaw;
 
 public static class AppState
 {
-    private const int AdapterPort = 13000;
     private static readonly TimeSpan ServiceModeBackendDrainTimeout = TimeSpan.FromSeconds(8);
     private static bool isApplyingSettings;
     private static bool isSwitchingToServiceMode;
@@ -87,7 +86,7 @@ public static class AppState
                 return false;
             }
 
-            if (!CliRunner.TryStartOnDemand(SettingsStore.Current, AdapterPort))
+            if (!CliRunner.TryStartOnDemand(SettingsStore.Current, AppDefaults.AdapterPort))
             {
                 return false;
             }
@@ -130,7 +129,7 @@ public static class AppState
             }
             else if (!IsServiceModeEnabled)
             {
-                CliRunner.EnsureRunning(SettingsStore.Current, AdapterPort);
+                CliRunner.EnsureRunning(SettingsStore.Current, AppDefaults.AdapterPort);
             }
             else
             {
@@ -231,9 +230,10 @@ public static class AppState
 
         if (!string.IsNullOrWhiteSpace(proxy.MihomoError) || proxy.Fallback)
         {
-            ViewModel.ConnectionState = proxy.Fallback ? "已回退" : "异常";
-            ViewModel.ConnectionStatusLevel = StatusLevel.Warning;
-            ViewModel.ConnectionDetail = DescribeProxyIssue(proxy);
+            ViewModel.UpdateConnectionStatus(
+                proxy.Fallback ? "已回退" : "异常",
+                StatusLevel.Warning,
+                DescribeProxyIssue(proxy));
 
             if (string.Equals(proxy.MihomoError, "mihomo_binary_not_found", StringComparison.OrdinalIgnoreCase))
             {
@@ -405,7 +405,7 @@ public static class AppState
                     }
                     else
                     {
-                        var desktopFallbackStarted = CliRunner.EnsureRunning(SettingsStore.Current, AdapterPort, force: true);
+                            var desktopFallbackStarted = CliRunner.EnsureRunning(SettingsStore.Current, AppDefaults.AdapterPort, force: true);
                         if (desktopFallbackStarted)
                         {
                             enableResult = ServiceModeManager.WithDesktopFallback(enableResult);
@@ -519,7 +519,7 @@ public static class AppState
     private static async Task<bool> DrainDesktopBackendAsync(TimeSpan timeout)
     {
         await TryRequestDesktopBackendShutdownAsync(timeout);
-        return await CliRunner.StopManagedBackendAsync(SettingsStore.Current, AdapterPort, timeout);
+        return await CliRunner.StopManagedBackendAsync(SettingsStore.Current, AppDefaults.AdapterPort, timeout);
     }
 
     private static async Task TryRequestDesktopBackendShutdownAsync(TimeSpan timeout)
@@ -559,8 +559,10 @@ public static class AppState
     private static void ReportExitDrainFailure()
     {
         isExitRequested = false;
-        ViewModel.ConnectionStatusLevel = StatusLevel.Warning;
-        ViewModel.ConnectionDetail = "后台仍在退出中，已取消关闭。请稍后重试。";
+        ViewModel.UpdateConnectionStatus(
+            ViewModel.ConnectionState,
+            StatusLevel.Warning,
+            "后台仍在退出中，已取消关闭。请稍后重试。");
         if (App.MainWindow is Window window)
         {
             ShowWindow(window);
