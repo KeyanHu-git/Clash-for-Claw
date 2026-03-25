@@ -9,6 +9,8 @@ public static class SingleInstanceManager
 {
     private const string MutexName = @"Local\ClashForClaw.SingleInstance";
     private const string ActivateEventName = @"Local\ClashForClaw.Activate";
+    private static readonly TimeSpan SignalRetryWindow = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan SignalRetryInterval = TimeSpan.FromMilliseconds(120);
 
     private static Mutex? instanceMutex;
     private static EventWaitHandle? activateEvent;
@@ -33,17 +35,30 @@ public static class SingleInstanceManager
         return true;
     }
 
-    public static void SignalPrimaryInstance()
+    public static bool SignalPrimaryInstance()
     {
-        try
+        var deadline = DateTime.UtcNow + SignalRetryWindow;
+        while (DateTime.UtcNow < deadline)
         {
-            using var existingEvent = EventWaitHandle.OpenExisting(ActivateEventName);
-            existingEvent.Set();
+            try
+            {
+                using var existingEvent = EventWaitHandle.OpenExisting(ActivateEventName);
+                existingEvent.Set();
+                return true;
+            }
+            catch (WaitHandleCannotBeOpenedException)
+            {
+                // The primary instance owns the mutex but may still be wiring the wake signal.
+            }
+            catch
+            {
+                return false;
+            }
+
+            Thread.Sleep(SignalRetryInterval);
         }
-        catch
-        {
-            // The primary instance may still be starting up.
-        }
+
+        return false;
     }
 
     public static void StartActivationListener(Window window)
