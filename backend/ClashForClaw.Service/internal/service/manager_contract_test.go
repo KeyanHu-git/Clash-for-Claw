@@ -240,6 +240,25 @@ func TestStopIsIdempotentWhenServiceAlreadyStopped(t *testing.T) {
 	}
 }
 
+func TestWaitForRegistrationsClearedAllowsServiceDeletionToSettle(t *testing.T) {
+	withFakeWindowsTools(t,
+		fakeToolConfig{
+			Responses: []fakeToolResponse{
+				fakeServiceRegistered(service.StatusStopped),
+				fakeServiceRegistered(service.StatusStopped),
+			},
+			Default: fakeServiceMissing(),
+		},
+		fakeToolConfig{
+			Default: fakeTaskMissing(),
+		},
+	)
+
+	if err := newTestManager().waitForRegistrationsCleared(); err != nil {
+		t.Fatalf("waitForRegistrationsCleared returned error: %v", err)
+	}
+}
+
 func TestWaitForServiceRunningSucceedsWhenServiceStaysRunning(t *testing.T) {
 	withFakeWindowsTools(t,
 		fakeToolConfig{
@@ -497,6 +516,140 @@ func TestStopReturnsNilWhenNothingIsRegistered(t *testing.T) {
 	}
 }
 
+func TestStopTreatsServiceAlreadyStoppedAfterStopSignalAsSuccess(t *testing.T) {
+	withFakeWindowsTools(t,
+		fakeToolConfig{
+			Responses: []fakeToolResponse{
+				fakeServiceRegistered(service.StatusRunning),
+				fakeServiceRegistered(service.StatusStopped),
+			},
+			Default: fakeServiceRegistered(service.StatusStopped),
+		},
+		fakeToolConfig{
+			Default: fakeTaskMissing(),
+		},
+	)
+
+	manager := newTestManager()
+	manager.stopFn = func() error {
+		return errors.New("service not active")
+	}
+
+	if err := manager.Stop(); err != nil {
+		t.Fatalf("Stop returned error: %v", err)
+	}
+}
+
+func TestStopWaitsThroughStopPendingAfterStopSignalError(t *testing.T) {
+	withFakeWindowsTools(t,
+		fakeToolConfig{
+			Responses: []fakeToolResponse{
+				fakeServiceRegistered(service.StatusRunning),
+				fakeServiceStopPending(),
+				fakeServiceRegistered(service.StatusStopped),
+			},
+			Default: fakeServiceRegistered(service.StatusStopped),
+		},
+		fakeToolConfig{
+			Default: fakeTaskMissing(),
+		},
+	)
+
+	manager := newTestManager()
+	manager.stopFn = func() error {
+		return errors.New("service not active")
+	}
+
+	if err := manager.Stop(); err != nil {
+		t.Fatalf("Stop returned error: %v", err)
+	}
+}
+
+func TestUninstallWaitsForServiceRegistrationToDisappear(t *testing.T) {
+	withFakeWindowsTools(t,
+		fakeToolConfig{
+			Responses: []fakeToolResponse{
+				fakeServiceRegistered(service.StatusRunning),
+				fakeServiceRegistered(service.StatusRunning),
+				fakeServiceRegistered(service.StatusStopped),
+				fakeServiceRegistered(service.StatusStopped),
+				fakeServiceMissing(),
+			},
+			Default: fakeServiceMissing(),
+		},
+		fakeToolConfig{
+			Default: fakeTaskMissing(),
+		},
+	)
+
+	stopCalled := false
+	uninstallCalled := false
+	manager := newTestManager()
+	manager.stopFn = func() error {
+		stopCalled = true
+		return nil
+	}
+	manager.uninstallFn = func() error {
+		uninstallCalled = true
+		return nil
+	}
+
+	if err := manager.Uninstall(); err != nil {
+		t.Fatalf("Uninstall returned error: %v", err)
+	}
+	if !stopCalled {
+		t.Fatal("stop function was not called")
+	}
+	if !uninstallCalled {
+		t.Fatal("uninstall function was not called")
+	}
+}
+
+func TestUninstallSuppressesTransientDeleteErrorWhenRegistrationClears(t *testing.T) {
+	withFakeWindowsTools(t,
+		fakeToolConfig{
+			Responses: []fakeToolResponse{
+				fakeServiceRegistered(service.StatusStopped),
+				fakeServiceRegistered(service.StatusStopped),
+				fakeServiceRegistered(service.StatusStopped),
+			},
+			Default: fakeServiceMissing(),
+		},
+		fakeToolConfig{
+			Default: fakeTaskMissing(),
+		},
+	)
+
+	manager := newTestManager()
+	manager.uninstallFn = func() error {
+		return errors.New("DeleteService pending")
+	}
+
+	if err := manager.Uninstall(); err != nil {
+		t.Fatalf("Uninstall returned error: %v", err)
+	}
+}
+
+func TestUninstallRemovesTaskRegistrationIdempotently(t *testing.T) {
+	withFakeWindowsTools(t,
+		fakeToolConfig{
+			Default: fakeServiceMissing(),
+		},
+		fakeToolConfig{
+			Responses: []fakeToolResponse{
+				fakeTaskRegistered(),
+				{},
+				fakeTaskMissing(),
+			},
+			Default: fakeTaskMissing(),
+		},
+	)
+
+	if err := newTestManager().Uninstall(); err != nil {
+		t.Fatalf("Uninstall returned error: %v", err)
+	}
+}
+
 func withFakeWindowsTools(t *testing.T, scCfg fakeToolConfig, taskCfg fakeToolConfig) {
 	t.Helper()
 
@@ -600,6 +753,12 @@ func fakeServiceMissing() fakeToolResponse {
 	return fakeToolResponse{
 		ExitCode: 1060,
 		Output:   "[SC] EnumQueryServicesStatus:OpenService FAILED 1060:",
+	}
+}
+
+func fakeServiceStopPending() fakeToolResponse {
+	return fakeToolResponse{
+		Output: fmt.Sprintf("SERVICE_NAME: %s\r\n        STATE              : 3  STOP_PENDING\r\n", ServiceName),
 	}
 }
 

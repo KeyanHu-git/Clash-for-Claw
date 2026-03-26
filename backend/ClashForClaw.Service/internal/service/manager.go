@@ -14,13 +14,15 @@ import (
 )
 
 const (
-	ServiceName        = "ClashForClaw"
-	ServiceDisplayName = "Clash for Claw"
-	ServiceDescription = "Clash for Claw background service"
-	legacyServiceName  = "OpenClawAdapter"
-	startSettleTimeout = 5 * time.Second
-	startPollInterval  = 250 * time.Millisecond
-	startStablePolls   = 3
+	ServiceName            = "ClashForClaw"
+	ServiceDisplayName     = "Clash for Claw"
+	ServiceDescription     = "Clash for Claw background service"
+	legacyServiceName      = "OpenClawAdapter"
+	startSettleTimeout     = 5 * time.Second
+	stopSettleTimeout      = 15 * time.Second
+	uninstallSettleTimeout = 8 * time.Second
+	startPollInterval      = 250 * time.Millisecond
+	startStablePolls       = 3
 )
 
 type Mode string
@@ -35,6 +37,10 @@ type Manager struct {
 	userPaths    runtime.Paths
 	servicePaths runtime.Paths
 	exe          string
+	installFn    func() error
+	uninstallFn  func() error
+	startFn      func() error
+	stopFn       func() error
 }
 
 const localServiceUser = `NT AUTHORITY\LocalService`
@@ -104,11 +110,18 @@ func (m *Manager) Uninstall() error {
 	if err != nil {
 		return err
 	}
+	hadRegistrations := mode == ModeService || serviceStatus != service.StatusUnknown || taskRegistered
 
 	var errs []error
+	var cleanupErrs []error
+	if mode == ModeService {
+		if err := m.stopServiceAndWait(); err != nil {
+			cleanupErrs = append(cleanupErrs, err)
+		}
+	}
 	if taskRegistered {
-		if err := uninstallTask(); err != nil {
-			errs = append(errs, err)
+		if err := uninstallTaskIfPresent(); err != nil {
+			cleanupErrs = append(cleanupErrs, err)
 		}
 	}
 	if mode == ModeService {
@@ -117,9 +130,17 @@ func (m *Manager) Uninstall() error {
 		}
 	}
 	if mode == ModeService || serviceStatus != service.StatusUnknown {
-		if err := m.uninstallService(); err != nil {
+		if err := m.uninstallServiceIfPresent(); err != nil {
+			cleanupErrs = append(cleanupErrs, err)
+		}
+	}
+	if hadRegistrations {
+		if err := m.waitForRegistrationsCleared(); err != nil {
+			errs = append(errs, cleanupErrs...)
 			errs = append(errs, err)
 		}
+	} else {
+		errs = append(errs, cleanupErrs...)
 	}
 	m.cleanupLegacyArtifacts()
 	return errors.Join(errs...)
@@ -173,19 +194,13 @@ func (m *Manager) StartWithMode() (Mode, error) {
 }
 
 func (m *Manager) Stop() error {
-	mode, status, taskRegistered, err := m.currentRegistrations()
+	mode, _, taskRegistered, err := m.currentRegistrations()
 	if err != nil {
 		return err
 	}
 	switch {
 	case mode == ModeService:
-		if status == service.StatusStopped {
-			return runtime.SyncOperationalConfig(m.servicePaths, m.userPaths)
-		}
-		if err := m.stopService(); err != nil {
-			return err
-		}
-		if err := m.waitForServiceStopped(); err != nil {
+		if err := m.stopServiceAndWait(); err != nil {
 			return err
 		}
 		return runtime.SyncOperationalConfig(m.servicePaths, m.userPaths)
@@ -231,18 +246,30 @@ func ServiceArgs(baseDir string) []string {
 }
 
 func (m *Manager) installService() error {
+	if m.installFn != nil {
+		return m.installFn()
+	}
 	return m.service().Install()
 }
 
 func (m *Manager) uninstallService() error {
+	if m.uninstallFn != nil {
+		return m.uninstallFn()
+	}
 	return m.service().Uninstall()
 }
 
 func (m *Manager) startService() error {
+	if m.startFn != nil {
+		return m.startFn()
+	}
 	return m.service().Start()
 }
 
 func (m *Manager) stopService() error {
+	if m.stopFn != nil {
+		return m.stopFn()
+	}
 	return m.service().Stop()
 }
 
@@ -336,7 +363,7 @@ func (m *Manager) waitForServiceRunning() error {
 }
 
 func (m *Manager) waitForServiceStopped() error {
-	deadline := time.Now().Add(startSettleTimeout)
+	deadline := time.Now().Add(stopSettleTimeout)
 
 	for time.Now().Before(deadline) {
 		mode, status, _, err := m.currentRegistrations()
@@ -350,6 +377,71 @@ func (m *Manager) waitForServiceStopped() error {
 	}
 
 	return fmt.Errorf("%s: service failed to stop cleanly", ReasonStopFailed)
+}
+
+func (m *Manager) stopServiceAndWait() error {
+	mode, status, _, err := m.currentRegistrations()
+	if err != nil {
+		return err
+	}
+	if mode != ModeService || status == service.StatusStopped {
+		return nil
+	}
+
+	if err := m.stopService(); err != nil {
+		waitErr := m.waitForServiceStopped()
+		if waitErr == nil {
+			return nil
+		}
+		return errors.Join(err, waitErr)
+	}
+
+	return m.waitForServiceStopped()
+}
+
+func (m *Manager) waitForRegistrationsCleared() error {
+	deadline := time.Now().Add(uninstallSettleTimeout)
+
+	for time.Now().Before(deadline) {
+		mode, _, taskRegistered, err := m.currentRegistrations()
+		if err != nil {
+			return err
+		}
+		if mode != ModeService && !taskRegistered {
+			return nil
+		}
+		time.Sleep(startPollInterval)
+	}
+
+	return fmt.Errorf("%s: registrations still pending cleanup", ReasonUninstallFailed)
+}
+
+func (m *Manager) uninstallServiceIfPresent() error {
+	if err := m.uninstallService(); err != nil {
+		registered, _, queryErr := queryServiceRegistration(ServiceName)
+		if queryErr == nil && !registered {
+			return nil
+		}
+		if queryErr != nil {
+			return errors.Join(err, queryErr)
+		}
+		return err
+	}
+	return nil
+}
+
+func uninstallTaskIfPresent() error {
+	if err := uninstallTask(); err != nil {
+		registered, _, queryErr := queryTaskRegistration(ServiceName)
+		if queryErr == nil && !registered {
+			return nil
+		}
+		if queryErr != nil {
+			return errors.Join(err, queryErr)
+		}
+		return err
+	}
+	return nil
 }
 
 func (m *Manager) cleanupLegacyArtifacts() {

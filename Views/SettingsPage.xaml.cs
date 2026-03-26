@@ -66,7 +66,7 @@ public partial class SettingsPage : Page
         }
 
         var targetState = toggle.IsOn;
-        if (targetState == AppState.IsWindowsServiceMode)
+        if (targetState == AppState.IsServiceModeEnabled)
         {
             return;
         }
@@ -85,8 +85,10 @@ public partial class SettingsPage : Page
         try
         {
             var result = await AppState.ChangeServiceModeAsync(targetState);
-            var actualState = AppState.IsWindowsServiceMode;
-            var succeeded = actualState == targetState;
+            var actualState = AppState.IsServiceModeEnabled;
+            var succeeded = targetState
+                ? AppState.IsWindowsServiceRunning
+                : !AppState.IsServiceModeEnabled;
 
             SetServiceModeToggle(actualState);
             await ShowServiceModeResultAsync(result, targetState, succeeded);
@@ -260,7 +262,6 @@ public partial class SettingsPage : Page
 
     private void SetServiceModeToggle(bool enabled)
     {
-        AppState.ApplyServiceModeSelection(enabled);
         if (ServiceModeSwitch is not null)
         {
             ServiceModeSwitch.IsOn = enabled;

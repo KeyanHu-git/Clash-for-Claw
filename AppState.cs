@@ -27,8 +27,10 @@ public static class AppState
     public static TrayIconManager Tray { get; } = new();
     public static CliRunner CliRunner { get; } = new();
     public static ServiceModeState ServiceMode { get; private set; } = new();
-    public static bool IsServiceModeEnabled => (ServiceMode.IsServiceMode && ServiceMode.IsRunning) || ServiceMode.IsTaskFallback;
-    public static bool IsWindowsServiceMode => ServiceMode.IsServiceMode && ServiceMode.IsRunning;
+    public static bool IsServiceModeEnabled => ServiceMode.IsServiceMode || ServiceMode.IsTaskFallback;
+    public static bool IsWindowsServiceRegistered => ServiceMode.IsServiceMode;
+    public static bool IsWindowsServiceRunning => ServiceMode.IsServiceMode && ServiceMode.IsRunning;
+    public static bool IsWindowsServiceMode => IsWindowsServiceRunning;
     public static bool AllowClose { get; set; }
 
     public static void Initialize()
@@ -389,7 +391,7 @@ public static class AppState
                 if (!desktopBackendStopped)
                 {
                     var drainFailure = BuildDesktopBackendDrainFailureResult();
-                    ApplyServiceModeResult(drainFailure, true);
+                    ApplyServiceModeResult(drainFailure);
                     return drainFailure;
                 }
 
@@ -413,7 +415,7 @@ public static class AppState
                     }
                 }
 
-                ApplyServiceModeResult(enableResult, true);
+                ApplyServiceModeResult(enableResult);
                 return enableResult;
             }
             finally
@@ -425,7 +427,7 @@ public static class AppState
         var disableResult = await Task.Run(() => ServiceModeManager.Disable(SettingsStore.Current));
         RefreshServiceModeState();
         ApplySettings();
-        ApplyServiceModeResult(disableResult, false);
+        ApplyServiceModeResult(disableResult);
 
         if (disableResult.Failed)
         {
@@ -437,29 +439,30 @@ public static class AppState
     public static ServiceModeState RefreshServiceModeState()
     {
         ServiceMode = ServiceModeManager.Query(SettingsStore.Current);
-        ApplyServiceModeSelection(ServiceMode.IsServiceMode && ServiceMode.IsRunning, ServiceMode.IsTaskFallback);
+        ApplyServiceModeSelection(ServiceMode.IsServiceMode || ServiceMode.IsTaskFallback, ServiceMode.IsServiceMode && ServiceMode.IsRunning, ServiceMode.IsTaskFallback);
         return ServiceMode;
     }
 
-    public static void ApplyServiceModeSelection(bool enabled, bool taskFallbackActive = false)
+    public static void ApplyServiceModeSelection(bool enabled, bool serviceRunning = false, bool taskFallbackActive = false)
     {
         isApplyingSettings = true;
         ViewModel.ServiceModeEnabled = enabled;
+        ViewModel.ServiceModeRunning = serviceRunning;
         ViewModel.ServiceTaskFallbackActive = taskFallbackActive;
         isApplyingSettings = false;
     }
 
-    private static void ApplyServiceModeResult(ServiceModeResult result, bool enabled)
+    private static void ApplyServiceModeResult(ServiceModeResult result)
     {
         ViewModel.ServiceModeMessage = result.Message;
         ViewModel.IsServiceModeMessageOpen = true;
         ViewModel.ServiceModeSeverity = result.ServiceStarted
             ? InfoBarSeverity.Success
-            : result.FallbackScheduled || result.DesktopFallbackStarted
-                ? InfoBarSeverity.Warning
-                    : enabled
-                        ? InfoBarSeverity.Error
-                        : InfoBarSeverity.Informational;
+            : result.Failed
+                ? InfoBarSeverity.Error
+                : result.FallbackScheduled || result.DesktopFallbackStarted
+                    ? InfoBarSeverity.Warning
+                    : InfoBarSeverity.Success;
     }
 
     private static async Task<bool> IsBackendReachableAsync()

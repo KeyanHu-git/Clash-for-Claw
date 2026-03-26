@@ -62,6 +62,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool silentOnBootEnabled;
     private bool closeToTrayEnabled = true;
     private bool serviceModeEnabled;
+    private bool serviceModeRunning;
     private bool serviceTaskFallbackActive;
     private bool autoRunCliEnabled = true;
     private string cliPath = string.Empty;
@@ -356,10 +357,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ? $"剩余 {Math.Max(0, EffectiveTrafficTotal - EffectiveTrafficUsed):0.0} {EffectiveTrafficUnit}"
         : "总量未知";
 
-    public string ShellResidencyText => ServiceModeEnabled
-        ? "Windows 服务"
-        : ServiceTaskFallbackActive
+    public string ShellResidencyText => ServiceTaskFallbackActive
             ? "计划任务回退"
+        : ServiceModeEnabled
+            ? ServiceModeRunning
+                ? "Windows 服务"
+                : "Windows 服务（未运行）"
             : "桌面后台";
 
     public string ConnectivitySummary => $"本地 {LocalStatusText} / 网关 {GatewayStatusText} / 外网 {InternetStatusText}";
@@ -412,28 +415,36 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public bool IsCustomLogDirectory => !AppPaths.IsDefaultDesktopLogDirectory(logDirectory);
 
-    public string LogLocationHint => ServiceModeEnabled
-        ? "Windows 服务模式固定写入服务目录；上方目录用于桌面模式日志。"
+    public string LogLocationHint => ServiceTaskFallbackActive
+        ? "计划任务回退与服务模式共用服务目录；上方目录用于桌面模式日志。"
+        : ServiceModeEnabled
+            ? "Windows 服务日志固定写入服务目录；上方目录用于桌面模式日志。"
         : "桌面前台日志、崩溃记录和本地后台日志都会写入该目录。";
 
     public bool DesktopResidencyOptionsEnabled => !ServiceModeEnabled && !ServiceTaskFallbackActive;
 
-    public string DesktopResidencySummary => ServiceModeEnabled
-        ? "当前由 Windows 服务接管。"
-        : ServiceTaskFallbackActive
+    public string DesktopResidencySummary => ServiceTaskFallbackActive
             ? "当前由计划任务接管，不是 Windows 服务。"
+        : ServiceModeEnabled
+            ? ServiceModeRunning
+                ? "当前由 Windows 服务接管。"
+                : "已注册 Windows 服务，但当前未运行。"
             : "当前由桌面后台常驻。";
 
-    public string BackgroundProfileTitle => ServiceModeEnabled
-        ? "Windows 服务模式"
-        : ServiceTaskFallbackActive
+    public string BackgroundProfileTitle => ServiceTaskFallbackActive
             ? "计划任务回退"
+        : ServiceModeEnabled
+            ? ServiceModeRunning
+                ? "Windows 服务模式"
+                : "Windows 服务（未运行）"
             : "桌面后台";
 
-    public string BackgroundProfileDetail => ServiceModeEnabled
-        ? "已注册为 Windows 服务，前台仅用于配置。"
-        : ServiceTaskFallbackActive
+    public string BackgroundProfileDetail => ServiceTaskFallbackActive
             ? "未注册为 Windows 服务，当前由计划任务保持后台运行。"
+        : ServiceModeEnabled
+            ? ServiceModeRunning
+                ? "已注册为 Windows 服务，前台仅用于配置。"
+                : "已注册为 Windows 服务，但当前未运行；可重新启用或关闭服务模式。"
             : "当前由桌面进程常驻，可保留托盘与界面。";
 
     public bool IsModeSwitching
@@ -457,16 +468,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
             ? "正在切换到订阅模式..."
             : $"正在切换到本地端口 {LocalPort}...";
 
-    public string ServiceModeHint => ServiceModeEnabled
-        ? "当前为 Windows 服务模式，界面只用于配置。"
-        : ServiceTaskFallbackActive
+    public string ServiceModeHint => ServiceTaskFallbackActive
             ? "当前为计划任务回退，不是 Windows 服务；如需注册服务，请以管理员权限重新启用。"
+        : ServiceModeEnabled
+            ? ServiceModeRunning
+                ? "当前为 Windows 服务模式，界面只用于配置。"
+                : "Windows 服务已注册，但当前未运行；可关闭该模式或重新启用。"
             : "启用后会尝试注册 Windows 服务。";
 
-    public string ServiceModeAccountText => ServiceModeEnabled
-        ? "LocalService（Windows 服务）"
-        : ServiceTaskFallbackActive
+    public string ServiceModeAccountText => ServiceTaskFallbackActive
             ? "当前用户（计划任务）"
+        : ServiceModeEnabled
+            ? ServiceModeRunning
+                ? "LocalService（Windows 服务）"
+                : "LocalService（已注册，未运行）"
             : "当前用户（桌面后台）";
 
     public string ServiceModeDataPath => AppPaths.ServiceBaseDirectory;
@@ -495,6 +510,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         set
         {
             if (SetField(ref serviceModeEnabled, value))
+            {
+                RaiseBackgroundModeChanged();
+            }
+        }
+    }
+
+    public bool ServiceModeRunning
+    {
+        get => serviceModeRunning;
+        set
+        {
+            if (SetField(ref serviceModeRunning, value))
             {
                 RaiseBackgroundModeChanged();
             }

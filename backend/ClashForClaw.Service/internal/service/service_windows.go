@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/kardianos/service"
@@ -116,6 +117,37 @@ func queryServiceRegistration(name string) (bool, service.Status, error) {
 }
 
 func parseWindowsServiceStatus(output string) service.Status {
+	for _, rawLine := range strings.Split(output, "\n") {
+		line := strings.TrimSpace(rawLine)
+		if !strings.HasPrefix(strings.ToUpper(line), "STATE") {
+			continue
+		}
+
+		separator := strings.Index(line, ":")
+		if separator < 0 || separator == len(line)-1 {
+			continue
+		}
+
+		fields := strings.Fields(line[separator+1:])
+		if len(fields) == 0 {
+			continue
+		}
+
+		code, err := strconv.Atoi(fields[0])
+		if err != nil {
+			continue
+		}
+
+		switch code {
+		case 1:
+			return service.StatusStopped
+		case 4:
+			return service.StatusRunning
+		default:
+			return service.StatusUnknown
+		}
+	}
+
 	text := strings.ToLower(output)
 	switch {
 	case strings.Contains(text, "running"):

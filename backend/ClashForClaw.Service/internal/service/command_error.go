@@ -14,6 +14,7 @@ const (
 	ServiceNotInstalledReason                           = "service_not_installed"
 	ReasonStartFailed                                   = "start_failed"
 	ReasonStopFailed                                    = "stop_failed"
+	ReasonUninstallFailed                               = "uninstall_failed"
 	ReasonStatusFailed                                  = "status_failed"
 	ReasonInitFailed                                    = "init_failed"
 )
@@ -93,6 +94,7 @@ func reasonFromError(err error) string {
 		ReasonInstallFailed,
 		ReasonStartFailed,
 		ReasonStopFailed,
+		ReasonUninstallFailed,
 		ReasonStatusFailed,
 		ReasonInitFailed,
 	} {
@@ -111,6 +113,8 @@ func fallbackReason(action string) string {
 		return ReasonStartFailed
 	case "stop":
 		return ReasonStopFailed
+	case "uninstall":
+		return ReasonUninstallFailed
 	case "status":
 		return ReasonStatusFailed
 	case "init":
